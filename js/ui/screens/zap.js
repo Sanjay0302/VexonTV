@@ -83,4 +83,69 @@ App.uiScreens = App.uiScreens || {}
     }
 
     App.uiScreens.zap = ZapPanel
+
+    function FavZapPanel() {
+        const state = store.state
+        const favorites = state.favorites
+        const playing = state.playing && state.playing.channel ? state.playing.channel.url : ""
+
+        return html`<div class="zap fav-zap" id="favZapPanel">
+            <div class="zap-list" id="zapFavChannels">
+                <p class="zap-head" id="favZapHead">
+                    <span>Favorites</span>
+                    <span class="zap-hint">OK watch · BACK close</span>
+                </p>
+                ${
+                    favorites.length === 0
+                        ? html`<p class="zap-empty">No favorites yet. Press RED while watching a channel to save it.</p>`
+                        : null
+                }
+                ${favorites.map((channel, index) => {
+                    const program = store.programOf(channel)
+                    const progress = store.programProgress(program)
+                    return html`<button
+                        class=${`row zapch${channel.url === playing ? " playing" : ""}`}
+                        tabindex="-1"
+                        data-url=${channel.url}
+                        data-list=${channel.listId}
+                        onClick=${function () {
+                            store.zapToFav(channel)
+                        }}
+                    >
+                        <span class="num">${index + 1}</span>
+                        <span class="thumb" style=${kit.logoStyle(channel.logo)}>
+                            ${channel.logo ? null : html`<span class="thumb-letter">${kit.initial(channel.name)}</span>`}
+                        </span>
+                        <span class="zap-info">
+                            <span class="zap-top">
+                                <span class="row-name">${channel.name}</span>
+                                <span class="saved">★</span>
+                            </span>
+                            ${
+                                program
+                                    ? html`<span class="zap-guide">
+                                          <span class="zap-time">${clock(program.start)}</span>
+                                          ${
+                                              progress !== null
+                                                  ? html`<span class="zap-bar">
+                                                        <span
+                                                            class="zap-bar-fill"
+                                                            style=${`width:${progress}%`}
+                                                        ></span>
+                                                    </span>`
+                                                  : html`<span class="zap-bar"></span>`
+                                          }
+                                          <span class="zap-time">${clock(program.end)}</span>
+                                      </span>`
+                                    : html`<span class="row-sub">${channel.group || ""}</span>`
+                            }
+                        </span>
+                        ${channel.url === playing ? html`<span class="zap-now" aria-label="playing">▶</span>` : null}
+                    </button>`
+                })}
+            </div>
+        </div>`
+    }
+
+    App.uiScreens.favZap = FavZapPanel
 })()

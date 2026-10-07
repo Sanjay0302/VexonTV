@@ -219,6 +219,8 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
+        zone("zapFavChannels", "#zapFavChannels .zapch", {})
+
         zone("playError", "#playError .btn")
 
         zone("confirm", "#confirm .btn")
@@ -227,6 +229,10 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
     function back() {
         if (store.state.confirm) {
             store.closeConfirm()
+            return true
+        }
+        if (store.state.favZapOpen) {
+            store.closeFavZap()
             return true
         }
         if (store.state.zapOpen) {
@@ -309,10 +315,15 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             return true
         }
 
-        if (store.state.zapOpen) return false
+        if (store.state.favZapOpen && code === tv.KEY.RIGHT) {
+            store.closeFavZap()
+            return true
+        }
+
+        if (store.state.zapOpen || store.state.favZapOpen) return false
 
         if (code === tv.KEY.LEFT) {
-            store.openZap()
+            store.openFavZap()
             return true
         }
 
@@ -339,7 +350,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             return true
         }
         if (code === tv.KEY.ENTER) {
-            store.openZap()
+            store.openFavZap()
             return true
         }
         if (code === tv.KEY.PLAY_PAUSE) {

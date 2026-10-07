@@ -137,9 +137,10 @@ App.uiScreens = App.uiScreens || {}
                     : null
             }
             ${state.zapOpen ? html`<${App.uiScreens.zap} />` : null}
+            ${state.favZapOpen ? html`<${App.uiScreens.favZap} />` : null}
             <div
                 class=${`overlay${
-                    (overlay || state.menuFocus) && !state.playError && !state.zapOpen
+                    (overlay || state.menuFocus) && !state.playError && !state.zapOpen && !state.favZapOpen
                         ? " visible"
                         : ""
                 }`}
@@ -197,8 +198,8 @@ App.uiScreens = App.uiScreens || {}
                          are one thing and do not split down the middle. -->
                     <p class="ov-keys" id="ovKeys">
                         <span class="ov-key">CH UP/DOWN</span><span>channel</span>
-                        <span class="ov-key">LEFT or OK</span><span>channel list</span>
-                        <span class="ov-key">DOWN</span><span>favorites</span>
+                        <span class="ov-key">LEFT</span><span>favorites</span>
+                        <span class="ov-key">DOWN</span><span>menu</span>
                         <span class="ov-key">BACK</span><span>exit</span>
                         <span class="ov-key">RED</span><span>favorite</span>
                         <span class="ov-key">NUMBERS</span><span>jump</span>

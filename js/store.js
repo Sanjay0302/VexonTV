@@ -49,6 +49,7 @@ App.store = (function () {
         search: {},
         playing: null,
         zapOpen: false,
+        favZapOpen: false,
         menuFocus: false,
         preview: null,
         zapCategory: "",
@@ -805,10 +806,25 @@ App.store = (function () {
     }
 
     function jumpTo(number) {
-        const view = currentView()
         const index = parseInt(number, 10) - 1
         state.numBuffer = ""
         if (digitsTimer) clearTimeout(digitsTimer)
+
+        // In player context: number + Enter directly plays favorite #N
+        if (state.screen === "player") {
+            const channel = state.favorites[index]
+            if (!channel) {
+                notify(`No favorite #${number}`)
+                emit()
+                return
+            }
+            const listId = channel.listId || (state.playing && state.playing.listId)
+            if (state.favZapOpen) state.favZapOpen = false
+            play(channel, listId, state.favorites.slice())
+            return
+        }
+
+        const view = currentView()
         if (!view || !view.items[index]) {
             notify(`No channel ${number} on this screen`)
             emit()
@@ -1009,6 +1025,35 @@ App.store = (function () {
         focus("playerIdle")
     }
 
+    function openFavZap() {
+        set({ favZapOpen: true, menuFocus: false })
+        focus("zapFavChannels", favZapChannelIndex(), 0)
+    }
+
+    function closeFavZap() {
+        set({ favZapOpen: false, menuFocus: false })
+        focus("playerIdle")
+    }
+
+    function favZapChannelIndex() {
+        const url = state.playing && state.playing.channel ? state.playing.channel.url : null
+        for (let i = 0; i < state.favorites.length; i++) {
+            if (state.favorites[i].url === url) return i
+        }
+        return 0
+    }
+
+    function zapToFav(channel) {
+        if (!channel || !channel.url) return
+        if (state.screen !== "player") return
+        if (state.playing && state.playing.channel.url === channel.url) {
+            closeFavZap()
+            return
+        }
+        play(channel, channel.listId || state.playing.listId, state.favorites.slice())
+        closeFavZap()
+    }
+
     function zapCategories() {
         const playing =
             state.playing && state.playing.channel ? state.playing.channel.group || "Otros" : ""
@@ -1072,6 +1117,7 @@ App.store = (function () {
         state.playStatus = "idle"
         state.playError = null
         state.zapOpen = false
+        state.favZapOpen = false
         state.menuFocus = false
         if (origin && origin.screen) {
             set({ screen: origin.screen })
@@ -1215,6 +1261,7 @@ App.store = (function () {
     }
 
     function currentView() {
+        if (state.favZapOpen) return { items: state.favorites, zone: "zapFavChannels" }
         if (state.screen === "tv") return visibleTvCategory()
         if (state.screen === "recents") return visibleRecents()
         if (state.screen === "favs") return visibleFavorites()
@@ -1279,6 +1326,9 @@ App.store = (function () {
         zap,
         openZap,
         closeZap,
+        openFavZap,
+        closeFavZap,
+        zapToFav,
         setMenuFocus,
         zapCategories,
         zapChannels,

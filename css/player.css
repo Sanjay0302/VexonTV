@@ -404,3 +404,22 @@ body.playing {
     align-items: flex-end;
     gap: 12px;
 }
+
+/* Single-column favorites zap panel */
+.zap.fav-zap {
+    grid-template-columns: 1fr;
+    width: 36%;
+    min-width: 440px;
+}
+
+.zap.fav-zap .zap-list {
+    border-right: 0;
+}
+
+.zap-empty {
+    padding: 24px 20px;
+    font-size: 18px;
+    color: var(--text-3);
+    line-height: 1.5;
+}
+
