@@ -188,12 +188,15 @@ App.uiScreens = App.uiScreens || {}
                 search=${html`<${Search}
                     id="tvSearch"
                     countId="tvSearchCount"
-                    scope="tv"
+                    scope="tvch"
                     resetKey="tv"
-                    placeholder="Search categories"
-                    count=${view.count}
+                    placeholder="Search channels…"
+                    count=${store.searchOf("tvch") ? store.visibleTvCategory().count : ""}
                     onInput=${function (value) {
-                        store.setSearch("tv", value)
+                        store.setSearch("tvch", value)
+                    }}
+                    onClear=${function () {
+                        store.setSearch("tvch", "")
                     }}
                 />`}
             />

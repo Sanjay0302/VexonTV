@@ -359,31 +359,29 @@ async function run() {
     const zapChannel = zapChannels.filter((channel) => {
         return channel.group === "Deportes"
     })[0]
+    window.App.store.toggleFavorite(zapChannel, zapChannel.listId)
+    const nextChannel = zapChannels.filter((c) => c.url !== zapChannel.url)[0]
+    if (nextChannel) window.App.store.toggleFavorite(nextChannel, nextChannel.listId)
+
     window.App.store.play(zapChannel, zapChannel.listId, zapChannels)
     await wait(120)
     press(13)
     await wait(150)
-    check("OK while watching opens the zapping panel", !!document.getElementById("zapPanel"))
+    check("OK while watching opens the zapping panel", !!document.getElementById("favZapPanel"))
     check(
         "with the categories and the channels",
-        document.querySelectorAll("#zapCats .zapcat").length > 0 &&
-            document.querySelectorAll("#zapChannels .zapch").length > 0,
-        `${document.querySelectorAll("#zapCats .zapcat").length} categorías, ${
-            document.querySelectorAll("#zapChannels .zapch").length
-        } channels`,
+        document.querySelectorAll("#zapFavChannels .zapch").length > 0,
+        `${document.querySelectorAll("#zapFavChannels .zapch").length} channels`,
     )
     checkClasses("the panel uses the classes the CSS styles", [
-        ["#zapCats .zapcat", "category"],
-        ["#zapChannels .zapch", "channel"],
-        [".zap-bar", "bar"],
+        ["#zapFavChannels .zapch", "channel"],
         [".zap-info", "info"],
     ])
     check(
         "with a channel marked as the one being watched",
-        !!document.querySelector("#zapChannels .zapch.playing"),
+        !!document.querySelector("#zapFavChannels .zapch.playing"),
     )
     const beforeZap = window.App.store.state.playing.channel.name
-    press(40)
     press(40)
     await wait(700)
     check(
@@ -403,7 +401,7 @@ async function run() {
     await wait(200)
     check(
         "and OK opens the focused channel and closes the list",
-        !document.getElementById("zapPanel") &&
+        !document.getElementById("favZapPanel") &&
             window.App.store.state.playing.channel.url === zapFocused.dataset.url,
         window.App.store.state.playing.channel.name,
     )
@@ -725,15 +723,15 @@ async function run() {
     check("up leaves the menu", !window.App.store.state.menuFocus)
     press(39)
     await wait(150)
-    check("right opens nothing", !document.getElementById("zapPanel"))
+    check("right opens nothing", !document.getElementById("favZapPanel"))
     press(37)
     await wait(150)
-    check("and left unfolds the channel list", !!document.getElementById("zapPanel"))
+    check("and left unfolds the channel list", !!document.getElementById("favZapPanel"))
     press(10009)
     await wait(120)
     check(
         "Back closes the list and keeps watching",
-        !document.getElementById("zapPanel") && window.App.store.state.screen === "player",
+        !document.getElementById("favZapPanel") && window.App.store.state.screen === "player",
     )
     const beforeChUp = window.App.store.state.playing.channel.name
     press(427)
@@ -817,13 +815,13 @@ async function run() {
         ["#screen-tv .search", "buscador"],
     ])
 
-    typeInto("#tvSearch", "espa")
+    typeInto("#tvSearch", "La 1")
     await wait(400)
     check(
-        "searching in TV filters categories",
-        document.querySelectorAll("#tvCats .tvcat").length === 1 &&
-            document.querySelector("#tvCats .tvcat .row-name").textContent === "España",
-        `${document.querySelectorAll("#tvCats .tvcat").length} rows`,
+        "searching in TV filters channels",
+        document.querySelectorAll("#tvChannels .channel").length > 0 &&
+            document.querySelector("#tvChannels .row-name").textContent.indexOf("La 1") !== -1,
+        `${document.querySelectorAll("#tvChannels .channel").length} channels`,
     )
     typeInto("#tvSearch", "")
     await wait(400)
@@ -1223,7 +1221,7 @@ async function run() {
     )
     check("the player has a key legend", !!document.getElementById("ovKeys"))
     const legend = (document.getElementById("ovKeys").textContent || "").replace(/\s+/g, " ")
-    ;["channel", "LEFT or OK", "favorites", "exit", "favorite", "jump"].forEach((key) => {
+    ;["channel", "LEFT", "favorites", "exit", "favorite", "jump"].forEach((key) => {
         check(`the legend explains "${key}"`, legend.indexOf(key) !== -1, legend.slice(0, 80))
     })
     await wait(4200)

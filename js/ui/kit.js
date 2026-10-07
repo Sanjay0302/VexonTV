@@ -497,18 +497,34 @@ App.uiKit = (function () {
     function Search(props) {
         const inputRef = useRef(null)
         const timer = useRef(null)
+        const [hasValue, setHasValue] = useState(false)
+
         useEffect(() => {
-            if (inputRef.current)
-                inputRef.current.value =
-                    props.value !== undefined ? props.value : store.searchOf(props.scope)
+            if (inputRef.current) {
+                const v = props.value !== undefined ? props.value : store.searchOf(props.scope)
+                inputRef.current.value = v
+                setHasValue(!!v)
+            }
         }, [props.scope, props.resetKey, props.value])
 
         function onInput(event) {
             const value = event.target.value
+            setHasValue(!!value)
             if (timer.current) clearTimeout(timer.current)
             timer.current = setTimeout(() => {
                 props.onInput(value)
             }, SEARCH_DEBOUNCE_MS)
+        }
+
+        function onClear() {
+            if (inputRef.current) {
+                inputRef.current.value = ""
+                inputRef.current.focus()
+            }
+            setHasValue(false)
+            if (timer.current) clearTimeout(timer.current)
+            props.onInput("")
+            if (props.onClear) props.onClear()
         }
 
         return html`<div class="search">
@@ -524,7 +540,18 @@ App.uiKit = (function () {
                 tabindex="-1"
                 onInput=${onInput}
             />
-            <span class="search-count" id=${props.countId}>${props.count}</span>
+            ${
+                hasValue
+                    ? html`<button
+                          class="search-clear"
+                          tabindex="-1"
+                          aria-label="Clear search"
+                          onClick=${onClear}
+                      >
+                          ×
+                      </button>`
+                    : html`<span class="search-count" id=${props.countId}>${props.count}</span>`
+            }
         </div>`
     }
 

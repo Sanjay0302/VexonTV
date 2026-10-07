@@ -140,7 +140,10 @@ App.uiScreens = App.uiScreens || {}
             ${state.favZapOpen ? html`<${App.uiScreens.favZap} />` : null}
             <div
                 class=${`overlay${
-                    (overlay || state.menuFocus) && !state.playError && !state.zapOpen && !state.favZapOpen
+                    (overlay || state.menuFocus) &&
+                    !state.playError &&
+                    !state.zapOpen &&
+                    !state.favZapOpen
                         ? " visible"
                         : ""
                 }`}

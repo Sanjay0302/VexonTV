@@ -97,7 +97,9 @@ App.uiScreens = App.uiScreens || {}
                 </p>
                 ${
                     favorites.length === 0
-                        ? html`<p class="zap-empty">No favorites yet. Press RED while watching a channel to save it.</p>`
+                        ? html`<p class="zap-empty">
+                              No favorites yet. Press RED while watching a channel to save it.
+                          </p>`
                         : null
                 }
                 ${favorites.map((channel, index) => {

@@ -135,6 +135,37 @@
     color: var(--text-3);
 }
 
+.search-clear {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--line-2);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-2);
+    font: inherit;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+        background var(--dur-fast) var(--ease),
+        color var(--dur-fast) var(--ease),
+        transform var(--dur-fast) var(--ease);
+}
+
+.search-clear:hover,
+.search-clear:focus {
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--text);
+    transform: scale(1.1);
+}
+
+.search-clear:active {
+    transform: scale(0.92);
+}
+
 .search:focus-within,
 .search:has(input.focused),
 .search.focused {

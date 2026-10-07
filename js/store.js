@@ -1073,8 +1073,9 @@ App.store = (function () {
     }
 
     function zapChannels() {
+        const cat = state.zapCategory || state.catName
         return allChannels().filter((channel) => {
-            return (channel.group || "Otros") === state.zapCategory
+            return (channel.group || "Otros") === cat
         })
     }
 
@@ -1222,6 +1223,23 @@ App.store = (function () {
 
     function visibleTvCategory() {
         const scope = state.tvSource
+        const needle = searchOf("tvch").trim()
+
+        if (needle) {
+            // Channel search: search across all channels by name
+            const allCh = allChannels().filter((channel) => {
+                if (scope && channel.listId !== scope) return false
+                return true
+            })
+            const result = view(allCh, "tvch", {
+                zone: "tvChannels",
+                empty: "No channels match your search.",
+                showGroup: true,
+            })
+            result.showGroup = true
+            return result
+        }
+
         const channels = allChannels().filter((channel) => {
             if (scope && channel.listId !== scope) return false
             return (channel.group || "Otros") === state.catName
