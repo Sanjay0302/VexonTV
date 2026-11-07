@@ -1150,10 +1150,26 @@ App.store = (function () {
         focus("confirm", 0, 0)
     }
 
+    function askConfirmRemoveFav(channel, listId) {
+        set({
+            confirm: {
+                message: `Remove "${channel.name}" from favorites?`,
+                okLabel: "Remove",
+                clean: true,
+                onAccept: function () {
+                    toggleFavorite(channel, listId)
+                },
+                returnScreen: state.screen,
+            },
+        })
+        focus("confirm", 0, 0)
+    }
+
     function closeConfirm() {
         const screen = state.confirm ? state.confirm.returnScreen : null
         set({ confirm: null })
         if (screen === "edit") focus("fields")
+        else if (screen === "player") focus("overlay")
         else goHome()
     }
 
@@ -1359,6 +1375,7 @@ App.store = (function () {
         playFailed,
         retryPlay,
         askConfirm,
+        askConfirmRemoveFav,
         closeConfirm,
         pushDigit,
         clearDigits,

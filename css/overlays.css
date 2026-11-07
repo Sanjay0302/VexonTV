@@ -133,6 +133,10 @@
     animation: modal-in var(--dur) var(--ease-out);
 }
 
+.modal-card.clean::after {
+    display: none;
+}
+
 @keyframes modal-in {
     from {
         opacity: 0;

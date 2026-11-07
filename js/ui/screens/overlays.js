@@ -50,7 +50,7 @@ App.uiScreens = App.uiScreens || {}
     App.uiScreens.confirm = function Confirm() {
         const confirm = store.state.confirm
         return html`<div class="modal" id="confirm">
-            <div class="modal-card">
+            <div class=${`modal-card${confirm.clean ? " clean" : ""}`}>
                 <p id="confirmText">${confirm.message}</p>
                 <div class="actions">
                     <button
@@ -73,7 +73,7 @@ App.uiScreens = App.uiScreens || {}
                             if (action) action()
                         }}
                     >
-                        Delete
+                        ${confirm.okLabel || "Delete"}
                     </button>
                 </div>
             </div>

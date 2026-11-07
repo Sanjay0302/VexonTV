@@ -214,8 +214,12 @@ App.uiScreens = App.uiScreens || {}
                         id="ovFav"
                         tabindex="-1"
                         onClick=${function () {
-                            store.toggleFavorite(channel, state.playing.listId)
-                            show()
+                            if (saved) {
+                                store.askConfirmRemoveFav(channel, state.playing.listId)
+                            } else {
+                                store.toggleFavorite(channel, state.playing.listId)
+                                show()
+                            }
                         }}
                     >
                         ${saved ? "Remove from favorites" : "Add to favorites"}

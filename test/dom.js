@@ -722,6 +722,10 @@ async function run() {
     )
     window.App.store.state.playing && document.getElementById("ovFav").click()
     await wait(80)
+    if (document.getElementById("confirm")) {
+        document.getElementById("confirmOk").click()
+        await wait(80)
+    }
     press(38)
     await wait(60)
     check("up leaves the menu", !window.App.store.state.menuFocus)
