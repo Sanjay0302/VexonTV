@@ -365,7 +365,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
         defineZones()
         tv.listen(onKey, { onFocus: store.focusChanged })
         ui.render()
-        store.goHome()
+        store.openFavorites()
     }
 
     document.addEventListener("DOMContentLoaded", start)

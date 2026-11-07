@@ -143,8 +143,8 @@ async function run() {
             return !splash || splash.classList.contains("off")
         })(),
     )
-    check("home screen mounted", !!document.getElementById("screen-home"))
-    check("and it is the only screen mounted", onlyScreen("screen-home"), screens().join(", "))
+    check("favorites screen mounted", !!document.getElementById("screen-favs"))
+    check("and it is the only screen mounted", onlyScreen("screen-favs"), screens().join(", "))
     check(
         "the rail has its four sections",
         document.querySelectorAll(".rail .rail-btn").length === 4,
@@ -163,6 +163,10 @@ async function run() {
         })(),
         (document.getElementById("railClock") || {}).textContent,
     )
+
+    window.App.store.goHome()
+    await wait(30)
+    check("navigating to home mounts home screen", !!document.getElementById("screen-home"))
     check(
         "on boot the factory public source is there",
         document.querySelectorAll("#sourceList .row.source").length === 1 &&
