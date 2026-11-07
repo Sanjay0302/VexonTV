@@ -94,7 +94,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
-        zone("tvSearch", "#tvSearch", {
+        zone("tvSearch", "#tvSearch, #screen-tv .search-clear", {
             onEdge: function (dir) {
                 if (dir === "up") tv.set("tvActions", 0, 0)
                 else if (dir === "left") tv.set("tvActions", 0, 0)
@@ -124,7 +124,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
-        zone("recentsSearch", "#recentsSearch", {
+        zone("recentsSearch", "#recentsSearch, #screen-recents .search-clear", {
             onEdge: function (dir) {
                 if (dir === "up") tv.set("rail", 0, 0)
                 else if (dir === "down") tv.set("recentsList", 0, 0)
@@ -138,7 +138,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
-        zone("favsSearch", "#favsSearch", {
+        zone("favsSearch", "#favsSearch, #screen-favs .search-clear", {
             onEdge: function (dir) {
                 if (dir === "up") tv.set("rail", 0, 0)
                 else if (dir === "down") tv.set("favsList", 0, 0)
@@ -160,7 +160,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
-        zone("catSearch", "#catSearch", {
+        zone("catSearch", "#catSearch, #screen-cats .search-clear", {
             onEdge: function (dir) {
                 if (dir === "up") tv.set("catActions", 0, 0)
                 else if (dir === "left") tv.set("catActions", 0, 0)
