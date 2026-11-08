@@ -40,6 +40,8 @@ App.uiScreens = App.uiScreens || {}
                 values.mac = list.mac || ""
                 values.text = list.text || ""
                 values.name = list.name || ""
+                values.token = list.token || ""
+                values.chatId = list.chatId || ""
             }
             Object.keys(refs.current).forEach((key) => {
                 const element = refs.current[key]
@@ -48,7 +50,17 @@ App.uiScreens = App.uiScreens || {}
         }, [props.mode, state.editId, state.addType])
 
         function readFields() {
-            const values = { name: "", user: "", pass: "", mac: "", text: "", url: "", origin: "" }
+            const values = {
+                name: "",
+                user: "",
+                pass: "",
+                mac: "",
+                text: "",
+                url: "",
+                origin: "",
+                token: "",
+                chatId: "",
+            }
             Object.keys(refs.current).forEach((key) => {
                 const element = refs.current[key]
                 if (element && element.value !== undefined) values[key] = element.value.trim()
@@ -71,6 +83,8 @@ App.uiScreens = App.uiScreens || {}
                         user: values.user,
                         pass: values.pass,
                         mac: values.mac,
+                        token: values.token,
+                        chatId: values.chatId,
                         text: values.text,
                         name: values.name,
                     })
@@ -92,8 +106,18 @@ App.uiScreens = App.uiScreens || {}
 
         function remove() {
             store.askConfirm(`Delete “${list.name}”? Favorites are kept.`, () => {
+                const isTg = store.listKind(list) === "telegram"
+                const botName =
+                    (list.botUsername ? `@${list.botUsername}` : list.name) || "Telegram bot"
+                const userVal = list.chatId
+                    ? `@${String(list.chatId).trim().replace(/^@/, "")}`
+                    : ""
                 store.removeList(list.id)
-                store.notify("Source deleted")
+                if (isTg) {
+                    store.notify(`Removed ${botName}${userVal ? ` (${userVal})` : ""}`)
+                } else {
+                    store.notify("Source deleted")
+                }
                 store.goHome()
             })
         }
@@ -226,6 +250,7 @@ App.uiScreens = App.uiScreens || {}
     function fieldTypeOf(list) {
         if (!list) return "url"
         const kind = store.listKind(list)
+        if (kind === "telegram") return "telegram"
         if (kind !== "m3u") return kind
         return list.source === "text" ? "raw" : "url"
     }

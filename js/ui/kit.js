@@ -18,6 +18,12 @@ App.uiKit = (function () {
         { id: "stalker", title: "Stalker", hint: "Portal and MAC", icon: "box" },
         { id: "raw", title: "Pasted M3U", hint: "The playlist text", icon: "text" },
         {
+            id: "telegram",
+            title: "Telegram Bot",
+            hint: "Manage playlists and favories",
+            icon: "chat",
+        },
+        {
             id: "auto",
             title: "Detect",
             hint: "Paste whatever your provider gave you",
@@ -36,6 +42,18 @@ App.uiKit = (function () {
         stalker: [
             { id: "origin", label: "Portal", placeholder: "http://host:8080/c" },
             { id: "mac", label: "MAC", placeholder: "00:1A:79:12:34:56" },
+        ],
+        telegram: [
+            {
+                id: "token",
+                label: "Bot Token",
+                placeholder: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+            },
+            {
+                id: "chatId",
+                label: "Telegram Username",
+                placeholder: "@your_telegram_username",
+            },
         ],
         raw: [{ id: "text", label: "Playlist contents", multiline: true, placeholder: "#EXTM3U…" }],
         auto: [
@@ -198,6 +216,15 @@ App.uiKit = (function () {
             stroke-linejoin="round"
         />`,
     )
+    const iconChat = svg(
+        html`<path
+            d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linejoin="round"
+        />`,
+    )
     const iconPencil = svg(
         html`<path
                 d="M5 19h3L19 8l-3-3L5 16z"
@@ -225,6 +252,7 @@ App.uiKit = (function () {
         key: iconKey,
         box: iconBox,
         text: iconText,
+        chat: iconChat,
         wand: iconWand,
     }
 
@@ -314,7 +342,9 @@ App.uiKit = (function () {
         const nav = useRef(null)
         const clock = useClock()
         const stats = store.stats()
-        const sources = store.state.lists.slice(0, 3)
+        const sources = store.state.lists
+            .filter((list) => store.listKind(list) !== "telegram")
+            .slice(0, 3)
 
         useEffect(() => {
             const rail = nav.current
@@ -449,20 +479,37 @@ App.uiKit = (function () {
 
     function SourceRow(props) {
         const channels = props.channels
+        const isTg = store.listKind(props.list) === "telegram"
+        const botName =
+            props.list.botUsername ||
+            (isTg && App.telegramService
+                ? App.telegramService.getBotUsername(props.list.token)
+                : null)
+        const sub = isTg
+            ? botName
+                ? `@${botName}`
+                : "Telegram Bot"
+            : props.list.url || props.list.origin || ""
+        const countText = isTg ? "Bot" : channels ? store.formatCount(channels.length) : "—"
+
         return html`<div
             class="row source"
             data-list=${props.list.id}
             tabindex="-1"
             onClick=${function () {
-                store.openSource(props.list.id)
+                if (isTg) {
+                    store.openEdit(props.list.id)
+                } else {
+                    store.openSource(props.list.id)
+                }
             }}
         >
             <span class="kind">${store.listLabel(props.list)}</span>
             <span class="row-main">
-                <span class="row-name">${props.list.name}</span>
-                <span class="row-sub">${props.list.url || props.list.origin || ""}</span>
+                <span class="row-name">${props.list.name || "Telegram Bot"}</span>
+                <span class="row-sub">${sub}</span>
             </span>
-            <span class="row-count">${channels ? store.formatCount(channels.length) : "—"}</span>
+            <span class="row-count">${countText}</span>
             <button
                 class="edit"
                 data-list=${props.list.id}

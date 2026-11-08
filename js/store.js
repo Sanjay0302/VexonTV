@@ -27,6 +27,7 @@ App.store = (function () {
         { id: "m3u", label: "M3U" },
         { id: "xtream", label: "Xtream" },
         { id: "stalker", label: "Stalker" },
+        { id: "telegram", label: "Telegram" },
     ]
 
     const state = {
@@ -139,6 +140,9 @@ App.store = (function () {
         state.recent = read(KEYS.recent, []) || []
         state.filter = read(KEYS.filter, "all") || "all"
         seedDefault()
+        if (App.telegramService) {
+            App.telegramService.init()
+        }
     }
 
     function zoneFor(screen) {
@@ -165,6 +169,7 @@ App.store = (function () {
     function listLabel(list) {
         if (listKind(list) === "xtream") return "Xtream"
         if (listKind(list) === "stalker") return "Stalker"
+        if (listKind(list) === "telegram") return "Telegram"
         return list.source === "text" ? "Text" : "M3U"
     }
 
@@ -196,7 +201,7 @@ App.store = (function () {
     }
 
     function sources() {
-        const counts = { all: state.lists.length, m3u: 0, xtream: 0, stalker: 0 }
+        const counts = { all: state.lists.length, m3u: 0, xtream: 0, stalker: 0, telegram: 0 }
         state.lists.forEach((list) => {
             const kind = listKind(list)
             counts[kind] = (counts[kind] || 0) + 1
@@ -442,6 +447,35 @@ App.store = (function () {
             }
         }
 
+        if (type === "telegram") {
+            const token = (fields.token || "").trim()
+            if (!token) return { error: "Bot token is required" }
+            if (!/^\d+:[A-Za-z0-9_-]{20,}$/.test(token)) {
+                return {
+                    error: "Invalid bot token format. Expected: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+                }
+            }
+            const chatId = (fields.chatId || "").trim()
+            if (!chatId) {
+                return { error: "Telegram username is required" }
+            }
+            if (!/^@?[a-zA-Z0-9_]{3,}$/.test(chatId)) {
+                return {
+                    error: "Invalid username. Expected @username",
+                }
+            }
+            const cleanChatId = chatId.replace(/^@/, "")
+            return {
+                list: decorate({
+                    kind: "telegram",
+                    source: "bot",
+                    token,
+                    chatId: cleanChatId,
+                    name: name || "Telegram Bot",
+                }),
+            }
+        }
+
         if (!/^https?:\/\/.+/i.test(url))
             return { error: "The address must start with http:// or https://" }
         const inline = App.api.parseXtreamUrl(url)
@@ -480,6 +514,40 @@ App.store = (function () {
         showNotice("Checking", list.name)
         startLoadEntry("draft", list.name)
         emit()
+
+        // If it's a Telegram bot, start it
+        if (list.kind === "telegram") {
+            const startPromise = App.telegramService
+                ? App.telegramService.startBot(list.token, list.id, list.chatId)
+                : App.telegramClient
+                  ? App.telegramClient.startBot(list.token, list.name, list.chatId)
+                  : Promise.resolve({ success: true })
+
+            return Promise.resolve(startPromise)
+                .then((result) => {
+                    if (result && !result.success) {
+                        throw new Error(result.message || "Failed to start Telegram bot")
+                    }
+                    if (result && result.bot && result.bot.username) {
+                        list.botUsername = result.bot.username
+                    }
+                    list.imported = true
+                    state.lists = state.lists.concat([list])
+                    write(KEYS.lists, state.lists)
+                    delete state.loadProgress.draft
+                    hideNotice()
+                    notify("Telegram bot started")
+                    goHome()
+                    return []
+                })
+                .catch((error) => {
+                    delete state.loadProgress.draft
+                    hideNotice()
+                    emit()
+                    throw error
+                })
+        }
+
         return App.api
             .load(list, (update) => {
                 progressOf("draft", update, list)
@@ -514,13 +582,20 @@ App.store = (function () {
             text: list.text,
             muted: list.muted,
             mac: list.mac,
+            token: list.token,
+            chatId: list.chatId,
         }
-        const built = buildSource(fields.type || "url", {
+        // Determine the source type for buildSource
+        // For telegram lists, stay as telegram; otherwise fall back to "url"
+        const sourceType = list.kind === "telegram" ? "telegram" : fields.type || "url"
+        const built = buildSource(sourceType, {
             url: fields.url || list.url,
             origin: fields.origin || list.origin,
             user: fields.user,
             pass: fields.pass,
             mac: fields.mac,
+            token: fields.token || list.token,
+            chatId: fields.chatId || list.chatId,
             text: fields.text || list.text,
             name: fields.name,
         })
@@ -530,6 +605,29 @@ App.store = (function () {
             if (built.list[key] !== undefined) draft[key] = built.list[key]
         }
         draft.id = list.id
+
+        // Telegram lists don't load channels via API — just save and return
+        if (draft.kind === "telegram") {
+            if (App.telegramService) {
+                App.telegramService.stopBot(list.token)
+                App.telegramService.startBot(draft.token, draft.id, draft.chatId).then((res) => {
+                    if (res && res.bot && res.bot.username) {
+                        draft.botUsername = res.bot.username
+                        write(KEYS.lists, state.lists)
+                        emit()
+                    }
+                })
+            }
+            state.lists = state.lists.map((item) => {
+                return item.id === list.id ? draft : item
+            })
+            write(KEYS.lists, state.lists)
+            delete state.loadProgress.draft
+            hideNotice()
+            notify("Telegram source updated")
+            goHome()
+            return Promise.resolve([])
+        }
 
         showNotice("Checking", draft.name || list.name)
         startLoadEntry("draft", draft.name || list.name)
@@ -561,6 +659,19 @@ App.store = (function () {
     }
 
     function removeList(listId) {
+        const list = listById(listId)
+
+        // If it's a Telegram bot, stop it
+        if (list && list.kind === "telegram" && list.token) {
+            if (App.telegramService) {
+                App.telegramService.stopBot(list.token)
+            }
+            if (App.telegramClient) {
+                App.telegramClient.stopBot(list.token).catch((error) => {
+                    console.error("Error stopping Telegram bot:", error)
+                })
+            }
+        }
         state.lists = state.lists.filter((list) => {
             return list.id !== listId
         })
@@ -704,7 +815,11 @@ App.store = (function () {
         focus("tvSearch")
         const todo = state.lists
             .filter((list) => {
-                return !state.channels[list.id] && !state.pending[list.id]
+                return (
+                    listKind(list) !== "telegram" &&
+                    !state.channels[list.id] &&
+                    !state.pending[list.id]
+                )
             })
             .map((list) => {
                 return list.id
@@ -715,11 +830,16 @@ App.store = (function () {
     }
 
     function openSource(listId) {
-        if (!listById(listId)) return
+        const list = listById(listId)
+        if (!list) return
+        if (listKind(list) === "telegram") {
+            openEdit(listId)
+            return
+        }
         set({ screen: "tv", tvSource: listId, preview: null })
         focus("tvSearch")
         if (!state.channels[listId] && !state.pending[listId]) {
-            loadWithNotice([listId], listById(listId).name)
+            loadWithNotice([listId], list.name)
         }
     }
 
@@ -1145,8 +1265,17 @@ App.store = (function () {
         emit()
     }
 
-    function askConfirm(message, onAccept) {
-        set({ confirm: { message, onAccept, returnScreen: state.screen } })
+    function askConfirm(message, onAccept, options) {
+        options = options || {}
+        set({
+            confirm: {
+                message,
+                onAccept,
+                clean: true,
+                okLabel: options.okLabel || "Delete",
+                returnScreen: state.screen,
+            },
+        })
         focus("confirm", 0, 0)
     }
 
@@ -1313,6 +1442,49 @@ App.store = (function () {
         return { counts, favorites: state.favorites.length, recent: state.recent.length }
     }
 
+    // Pull favorites added in Telegram chat into VexonTV's favorites list.
+    // chatId = Telegram chat ID (the user sends /start and gets it from /status).
+    // Favorites are merged in VexonTV format: {listId, url, name, group, logo}
+    function syncTelegramFavorites(listId, chatId) {
+        const list = listById(listId)
+        if (!list || list.kind !== "telegram") {
+            return Promise.reject(new Error("Not a Telegram source"))
+        }
+        if (!App.telegramClient) {
+            return Promise.reject(new Error("Telegram client not loaded"))
+        }
+        return App.telegramClient.syncFavorites(list.token, chatId, listId).then((result) => {
+            if (!result.success) {
+                throw new Error(result.message || "Could not fetch Telegram favorites")
+            }
+            const incoming = result.favorites || []
+            let added = 0
+            incoming.forEach((fav) => {
+                const favListId = fav.listId || listId
+                if (favoriteIndex(favListId, fav.url) === -1) {
+                    state.favorites = state.favorites.concat([
+                        {
+                            listId: favListId,
+                            url: fav.url,
+                            name: fav.name,
+                            group: fav.group || "Telegram",
+                            logo: fav.logo || "",
+                        },
+                    ])
+                    added++
+                }
+            })
+            write(KEYS.favorites, state.favorites)
+            emit()
+            notify(
+                added
+                    ? `Synced ${formatCount(added)} favorite${added === 1 ? "" : "s"} from Telegram`
+                    : "Telegram favorites are already up to date",
+            )
+            return added
+        })
+    }
+
     return {
         state,
         subscribe,
@@ -1393,5 +1565,6 @@ App.store = (function () {
         visibleRecents,
         visibleFavorites,
         stats,
+        syncTelegramFavorites,
     }
 })()

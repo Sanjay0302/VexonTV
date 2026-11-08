@@ -324,7 +324,7 @@ check(
 const sources = store.sources()
 check(
     "the type filter counts each type",
-    sources.types.length === 4 && sources.types[1].count === 1 && sources.types[2].count === 1,
+    sources.types.length === 5 && sources.types[1].count === 1 && sources.types[2].count === 1,
     JSON.stringify(sources.types),
 )
 store.setFilter("xtream")

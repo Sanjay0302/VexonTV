@@ -183,8 +183,8 @@ async function run() {
         focused() ? focused().className : "(nothing)",
     )
     check(
-        "the type filter has its four options",
-        document.querySelectorAll("#typeList .type").length === 4,
+        "the type filter has its options",
+        document.querySelectorAll("#typeList .type").length === 5,
     )
     checkClasses("the home uses the classes the CSS styles", [
         [".rail .brand", "marca"],
@@ -229,8 +229,8 @@ async function run() {
     await wait(30)
     check("OK opens the type selector", !!document.getElementById("addTypes"))
     check(
-        "it offers the six formats",
-        document.querySelectorAll("#addTypes .typecard").length === 6,
+        "it offers the formats",
+        document.querySelectorAll("#addTypes .typecard").length === 7,
         `${document.querySelectorAll("#addTypes .typecard").length} tarjetas`,
     )
     check("the focus enters the selector", !!focused() && focused().classList.contains("typecard"))

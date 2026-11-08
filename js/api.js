@@ -433,6 +433,10 @@ App.api = (function () {
             return loadXtream(portal, onProgress)
         }
 
+        if (list.kind === "telegram") {
+            return Promise.resolve([])
+        }
+
         if (list.source === "text") return loadM3uText(list.text, onProgress)
         if (list.source === "url" || list.url) return loadM3uUrl(list.url, onProgress)
         return Promise.reject(new Error("I do not know how to load that source"))
