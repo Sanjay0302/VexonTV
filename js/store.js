@@ -10,10 +10,16 @@ App.store = (function () {
         seeded: "ts.seeded",
     }
 
-    const DEFAULT_LIST = {
-        url: "https://iptv-org.github.io/iptv/index.country.m3u",
-        name: "Free channels of the world",
-    }
+    const DEFAULT_LISTS = [
+        {
+            url: "https://iptv-org.github.io/iptv/index.country.m3u",
+            name: "Free channels of the world",
+        },
+        {
+            url: "https://iptv-org.github.io/iptv/languages/kan.m3u",
+            name: "Kannada Channels",
+        },
+    ]
     const MAX_TILES = 200
     const MAX_RECENT = 12
     const TOAST_MS = 3600
@@ -127,9 +133,13 @@ App.store = (function () {
     function seedDefault() {
         if (state.lists.length) return
         if (read(KEYS.seeded, false)) return
-        const built = buildSource("url", { url: DEFAULT_LIST.url, name: DEFAULT_LIST.name })
-        if (!built.list) return
-        state.lists = [built.list]
+        const lists = []
+        for (let i = 0; i < DEFAULT_LISTS.length; i++) {
+            const built = buildSource("url", { url: DEFAULT_LISTS[i].url, name: DEFAULT_LISTS[i].name })
+            if (built.list) lists.push(built.list)
+        }
+        if (!lists.length) return
+        state.lists = lists
         write(KEYS.lists, state.lists)
         write(KEYS.seeded, true)
     }
@@ -519,9 +529,7 @@ App.store = (function () {
         if (list.kind === "telegram") {
             const startPromise = App.telegramService
                 ? App.telegramService.startBot(list.token, list.id, list.chatId)
-                : App.telegramClient
-                  ? App.telegramClient.startBot(list.token, list.name, list.chatId)
-                  : Promise.resolve({ success: true })
+                : Promise.resolve({ success: true })
 
             return Promise.resolve(startPromise)
                 .then((result) => {
@@ -665,11 +673,6 @@ App.store = (function () {
         if (list && list.kind === "telegram" && list.token) {
             if (App.telegramService) {
                 App.telegramService.stopBot(list.token)
-            }
-            if (App.telegramClient) {
-                App.telegramClient.stopBot(list.token).catch((error) => {
-                    console.error("Error stopping Telegram bot:", error)
-                })
             }
         }
         state.lists = state.lists.filter((list) => {

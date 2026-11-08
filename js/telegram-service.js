@@ -5,6 +5,7 @@ App.telegramService = (function () {
     const activeBots = {}
     const userPlaylists = {}
     const userSearch = {}
+    const testingInProgress = {}
 
     function getPlaylist(chatId) {
         if (userPlaylists[chatId]) return userPlaylists[chatId]
@@ -42,69 +43,75 @@ App.telegramService = (function () {
             const timeout = timeoutMs || 10000
             let settled = false
             let successTimer = null
-
-            function done(result) {
-                if (settled) return
-                settled = true
-                clearTimeout(timer)
-                if (successTimer) clearTimeout(successTimer)
-                if (video) {
-                    try {
-                        video.pause()
-                        video.removeAttribute("src")
-                        video.load()
-                    } catch {}
-                    if (video.parentNode) video.parentNode.removeChild(video)
-                }
-                resolve(result)
-            }
-
-            const timer = setTimeout(() => {
-                done({ ok: false, error: "The channel took too long to answer" })
-            }, timeout)
+            let timer = null
 
             const video = document.createElement("video")
             video.preload = "auto"
             video.muted = true
             video.playsInline = true
             video.style.display = "none"
-            document.body.appendChild(video)
 
-            function onActivePlayback() {
-                if (settled || successTimer) return
-                // Require playing stream for 2.5s without error before declaring OK
-                successTimer = setTimeout(() => {
-                    done({ ok: true })
-                }, 2500)
+            function cleanup() {
+                if (timer) clearTimeout(timer)
+                if (successTimer) clearTimeout(successTimer)
+                video.removeEventListener("playing", onPlaying)
+                video.removeEventListener("timeupdate", onTimeUpdate)
+                video.removeEventListener("error", onError)
+                try {
+                    video.pause()
+                    video.removeAttribute("src")
+                    video.load()
+                } catch {}
+                if (video.parentNode) video.parentNode.removeChild(video)
             }
 
-            video.addEventListener("playing", onActivePlayback)
-            video.addEventListener("timeupdate", () => {
-                if (video.currentTime > 0) onActivePlayback()
-            })
+            function done(result) {
+                if (settled) return
+                settled = true
+                cleanup()
+                resolve(result)
+            }
 
-            video.addEventListener(
-                "error",
-                () => {
-                    const err = video.error
-                    let msg = "Could not play the channel"
-                    if (err) {
-                        if (err.code === 1) msg = "Playback aborted"
-                        else if (err.code === 2) msg = "Network error while loading stream"
-                        else if (err.code === 3) msg = "Media decoding error"
-                        else if (err.code === 4)
-                            msg = "Failed to load because no supported source was found"
-                    }
-                    done({ ok: false, error: msg })
-                },
-                { once: true },
-            )
+            timer = setTimeout(() => {
+                done({ ok: false, error: "The channel took too long to answer" })
+            }, timeout)
+
+            function onPlaying() {
+                if (settled || successTimer) return
+                successTimer = setTimeout(() => {
+                    done({ ok: true })
+                }, 2000)
+            }
+
+            function onTimeUpdate() {
+                if (video.currentTime > 0) onPlaying()
+            }
+
+            function onError() {
+                const err = video.error
+                let msg = "Could not play the channel"
+                if (err) {
+                    if (err.code === 1) msg = "Playback aborted"
+                    else if (err.code === 2) msg = "Network error while loading stream"
+                    else if (err.code === 3) msg = "Media decoding error"
+                    else if (err.code === 4)
+                        msg = "Failed to load because no supported source was found"
+                }
+                done({ ok: false, error: msg })
+            }
+
+            video.addEventListener("playing", onPlaying)
+            video.addEventListener("timeupdate", onTimeUpdate)
+            video.addEventListener("error", onError, { once: true })
+
+            document.body.appendChild(video)
 
             try {
                 video.src = url
                 const playPromise = video.play()
                 if (playPromise && playPromise.catch) {
                     playPromise.catch((err) => {
+                        if (settled) return
                         if (err && err.name === "AbortError") return
                         done({
                             ok: false,
@@ -181,12 +188,13 @@ App.telegramService = (function () {
     }
 
     async function handleMessage(botEntry, msg) {
-        if (!msg || !msg.text) return
+        if (!msg) return
         const token = botEntry.token
         const chatId = msg.chat.id
         const userTgName = msg.from && msg.from.username
-        const text = msg.text.trim()
-        const userName = msg.from.first_name || "friend"
+        const rawText = msg.text || msg.caption || ""
+        const text = rawText.trim()
+        const userName = msg.from && msg.from.first_name ? msg.from.first_name : "friend"
 
         if (!isAllowed(botEntry, userTgName)) {
             await callTg(token, "sendMessage", {
@@ -266,8 +274,8 @@ App.telegramService = (function () {
                     text: `No channels found matching "${text}".`,
                     reply_markup: {
                         inline_keyboard: [
-                            [{ text: "🔍 Search Again", callback_data: "search_channel" }],
-                            [{ text: "📂 Browse Categories", callback_data: "show_categories" }],
+                            [{ text: "Search Again", callback_data: "search_channel" }],
+                            [{ text: "Browse Categories", callback_data: "show_categories" }],
                         ],
                     },
                 })
@@ -318,7 +326,7 @@ App.telegramService = (function () {
                 if (!playlistData.channels.length) {
                     await callTg(token, "sendMessage", {
                         chat_id: chatId,
-                        text: "⚠️ No valid channels found in that playlist.",
+                        text: "No valid channels found in that playlist.",
                     })
                     return
                 }
@@ -328,14 +336,14 @@ App.telegramService = (function () {
                 await callTg(token, "sendMessage", {
                     chat_id: chatId,
                     text:
-                        `✅ Playlist loaded successfully!\n` +
-                        `📁 Found ${playlistData.categories.length} categories and ${playlistData.channels.length} channels.\n\n` +
+                        `Playlist loaded successfully!\n` +
+                        `Found ${playlistData.categories.length} categories and ${playlistData.channels.length} channels.\n\n` +
                         `Choose an option below:`,
                     reply_markup: {
                         inline_keyboard: [
-                            [{ text: "📂 Browse Categories", callback_data: "show_categories" }],
-                            [{ text: "🔍 Search for Channel", callback_data: "search_channel" }],
-                            [{ text: "⭐ View Favorites", callback_data: "show_favorites" }],
+                            [{ text: "Browse Categories", callback_data: "show_categories" }],
+                            [{ text: "Search for Channel", callback_data: "search_channel" }],
+                            [{ text: "View Favorites", callback_data: "show_favorites" }],
                         ],
                     },
                 })
@@ -343,7 +351,7 @@ App.telegramService = (function () {
                 console.error("Error loading M3U in bot:", err)
                 await callTg(token, "sendMessage", {
                     chat_id: chatId,
-                    text: `❌ Failed to fetch playlist: ${err.message}`,
+                    text: `Failed to fetch playlist: ${err.message}`,
                 })
             }
             return
@@ -361,8 +369,8 @@ App.telegramService = (function () {
             const emptyText = "No search results found."
             const emptyKeyboard = {
                 inline_keyboard: [
-                    [{ text: "🔍 Search Again", callback_data: "search_channel" }],
-                    [{ text: "📂 Browse Categories", callback_data: "show_categories" }],
+                    [{ text: "Search Again", callback_data: "search_channel" }],
+                    [{ text: "Browse Categories", callback_data: "show_categories" }],
                 ],
             }
             if (messageId) {
@@ -403,7 +411,7 @@ App.telegramService = (function () {
             const navRow = []
             if (safePage > 0) {
                 navRow.push({
-                    text: "⬅️ Previous",
+                    text: "Previous",
                     callback_data: `srchpage_${safePage - 1}`,
                 })
             }
@@ -413,7 +421,7 @@ App.telegramService = (function () {
             })
             if (safePage < totalPages - 1) {
                 navRow.push({
-                    text: "Next ➡️",
+                    text: "Next",
                     callback_data: `srchpage_${safePage + 1}`,
                 })
             }
@@ -421,8 +429,8 @@ App.telegramService = (function () {
         }
 
         rows.push([
-            { text: "🔍 Search Again", callback_data: "search_channel" },
-            { text: "📂 Browse Categories", callback_data: "show_categories" },
+            { text: "Search Again", callback_data: "search_channel" },
+            { text: "Browse Categories", callback_data: "show_categories" },
         ])
 
         const text = `Search results for "${entry.query}" (page ${safePage + 1}/${totalPages}, total ${total}):`
@@ -442,13 +450,13 @@ App.telegramService = (function () {
         }
     }
 
-    async function showFavoritesView(token, chatId, messageId) {
+    async function showFavoritesView(token, chatId, messageId, page) {
         const favs = App.store.state.favorites || []
         if (favs.length === 0) {
-            const text = "⭐ You have no favorite channels saved yet in VexonTV."
+            const text = "You have no favorite channels saved yet in VexonTV."
             const keyboard = {
                 inline_keyboard: [
-                    [{ text: "📂 Browse Categories", callback_data: "show_categories" }],
+                    [{ text: "Browse Categories", callback_data: "show_categories" }],
                 ],
             }
             if (messageId) {
@@ -468,13 +476,43 @@ App.telegramService = (function () {
             return
         }
 
-        const buttons = favs.slice(0, 30).map((f, index) => {
-            return [{ text: `⭐ ${f.name}`, callback_data: `favview_${index}` }]
-        })
-        buttons.push([{ text: "📂 Browse Categories", callback_data: "show_categories" }])
+        const FAV_PAGE_SIZE = 12
+        const total = favs.length
+        const totalPages = Math.ceil(total / FAV_PAGE_SIZE)
+        const safePage = Math.min(Math.max(0, page || 0), Math.max(0, totalPages - 1))
+        const startIdx = safePage * FAV_PAGE_SIZE
+        const pageFavs = favs.slice(startIdx, startIdx + FAV_PAGE_SIZE)
 
-        const text = `⭐ *Your Favorite Channels (${favs.length}):*`
-        const markup = { inline_keyboard: buttons }
+        const rows = pageFavs.map((f, idx) => {
+            const globalIdx = startIdx + idx
+            return [{ text: `${f.name}`, callback_data: `favview_${globalIdx}_${safePage}` }]
+        })
+
+        if (totalPages > 1) {
+            const navRow = []
+            if (safePage > 0) {
+                navRow.push({
+                    text: "Previous",
+                    callback_data: `favpage_${safePage - 1}`,
+                })
+            }
+            navRow.push({
+                text: `${safePage + 1}/${totalPages}`,
+                callback_data: `favpage_${safePage}`,
+            })
+            if (safePage < totalPages - 1) {
+                navRow.push({
+                    text: "Next",
+                    callback_data: `favpage_${safePage + 1}`,
+                })
+            }
+            rows.push(navRow)
+        }
+
+        rows.push([{ text: "Browse Categories", callback_data: "show_categories" }])
+
+        const text = `*Your Favorite Channels* (page ${safePage + 1}/${totalPages}, total ${total}):`
+        const markup = { inline_keyboard: rows }
 
         if (messageId) {
             await callTg(token, "editMessageText", {
@@ -566,21 +604,21 @@ App.telegramService = (function () {
             if (totalPages > 1) {
                 const navRow = []
                 if (page > 0) {
-                    navRow.push({ text: "⬅️ Previous", callback_data: `catspage_${page - 1}` })
+                    navRow.push({ text: "Previous", callback_data: `catspage_${page - 1}` })
                 }
                 navRow.push({
                     text: `${page + 1}/${totalPages}`,
                     callback_data: `catspage_${page}`,
                 })
                 if (page < totalPages - 1) {
-                    navRow.push({ text: "Next ➡️", callback_data: `catspage_${page + 1}` })
+                    navRow.push({ text: "Next", callback_data: `catspage_${page + 1}` })
                 }
                 rows.push(navRow)
             }
 
             rows.push([
-                { text: "🔍 Search", callback_data: "search_channel" },
-                { text: "⭐ View Favorites", callback_data: "show_favorites" },
+                { text: "Search", callback_data: "search_channel" },
+                { text: "View Favorites", callback_data: "show_favorites" },
             ])
 
             await callTg(token, "editMessageText", {
@@ -644,7 +682,7 @@ App.telegramService = (function () {
                     inline_keyboard: [
                         [{ text: "Test Stream", callback_data: `srchtest_${chIndex}` }],
                         [{ text: favText, callback_data: favAction }],
-                        [{ text: "⬅️ Back to list", callback_data: `srchpage_${srchPage}` }],
+                        [{ text: "Back to list", callback_data: `srchpage_${srchPage}` }],
                     ],
                 },
             })
@@ -682,7 +720,7 @@ App.telegramService = (function () {
                                 callback_data: `srchfavrem_${chIndex}_${srchPage}`,
                             },
                         ],
-                        [{ text: "⬅️ Back to list", callback_data: `srchpage_${srchPage}` }],
+                        [{ text: "Back to list", callback_data: `srchpage_${srchPage}` }],
                     ],
                 },
             })
@@ -720,7 +758,7 @@ App.telegramService = (function () {
                                 callback_data: `srchfavadd_${chIndex}_${srchPage}`,
                             },
                         ],
-                        [{ text: "⬅️ Back to list", callback_data: `srchpage_${srchPage}` }],
+                        [{ text: "Back to list", callback_data: `srchpage_${srchPage}` }],
                     ],
                 },
             })
@@ -736,19 +774,30 @@ App.telegramService = (function () {
                 await answer("Channel not found.")
                 return
             }
+            if (testingInProgress[chatId]) {
+                await answer("Test already in progress. Please wait.")
+                return
+            }
+            testingInProgress[chatId] = true
             await answer("Testing channel in player...")
 
-            const probe = await probeStream(channel.url, 8000)
-            if (probe.ok) {
-                await callTg(token, "sendMessage", {
-                    chat_id: chatId,
-                    text: `Stream Status: OK\n\`${channel.url}\``,
-                })
-            } else {
-                await callTg(token, "sendMessage", {
-                    chat_id: chatId,
-                    text: `Stream Status: Failed\n${probe.error}\n\`${channel.url}\``,
-                })
+            try {
+                const probe = await probeStream(channel.url, 10000)
+                if (probe.ok) {
+                    await callTg(token, "sendMessage", {
+                        chat_id: chatId,
+                        text: `Stream Status: OK\n\`${channel.url}\``,
+                        parse_mode: "Markdown",
+                    })
+                } else {
+                    await callTg(token, "sendMessage", {
+                        chat_id: chatId,
+                        text: `Stream Status: Failed\n${probe.error}\n\`${channel.url}\``,
+                        parse_mode: "Markdown",
+                    })
+                }
+            } finally {
+                delete testingInProgress[chatId]
             }
             return
         }
@@ -795,7 +844,7 @@ App.telegramService = (function () {
                 const navRow = []
                 if (safeChPage > 0) {
                     navRow.push({
-                        text: "⬅️ Previous",
+                        text: "Previous",
                         callback_data: `cat_${catIndex}_${catReturnPage}_${safeChPage - 1}`,
                     })
                 }
@@ -805,16 +854,14 @@ App.telegramService = (function () {
                 })
                 if (safeChPage < totalChPages - 1) {
                     navRow.push({
-                        text: "Next ➡️",
+                        text: "Next",
                         callback_data: `cat_${catIndex}_${catReturnPage}_${safeChPage + 1}`,
                     })
                 }
                 rows.push(navRow)
             }
 
-            rows.push([
-                { text: "⬅️ Back to Categories", callback_data: `catspage_${catReturnPage}` },
-            ])
+            rows.push([{ text: "Back to Categories", callback_data: `catspage_${catReturnPage}` }])
 
             await callTg(token, "editMessageText", {
                 chat_id: chatId,
@@ -867,7 +914,7 @@ App.telegramService = (function () {
                         [{ text: favText, callback_data: favAction }],
                         [
                             {
-                                text: "⬅️ Back to Channels",
+                                text: "Back to Channels",
                                 callback_data: `cat_${catIndex}_${catReturnPage}_${chReturnPage}`,
                             },
                         ],
@@ -900,19 +947,30 @@ App.telegramService = (function () {
                 await answer("Channel not found.")
                 return
             }
+            if (testingInProgress[chatId]) {
+                await answer("Test already in progress. Please wait.")
+                return
+            }
+            testingInProgress[chatId] = true
             await answer("Testing channel in player...")
 
-            const probe = await probeStream(channel.url, 8000)
-            if (probe.ok) {
-                await callTg(token, "sendMessage", {
-                    chat_id: chatId,
-                    text: `Stream Status: OK\n\`${channel.url}\``,
-                })
-            } else {
-                await callTg(token, "sendMessage", {
-                    chat_id: chatId,
-                    text: `Stream Status: Failed\n${probe.error}\n\`${channel.url}\``,
-                })
+            try {
+                const probe = await probeStream(channel.url, 10000)
+                if (probe.ok) {
+                    await callTg(token, "sendMessage", {
+                        chat_id: chatId,
+                        text: `Stream Status: OK\n\`${channel.url}\``,
+                        parse_mode: "Markdown",
+                    })
+                } else {
+                    await callTg(token, "sendMessage", {
+                        chat_id: chatId,
+                        text: `Stream Status: Failed\n${probe.error}\n\`${channel.url}\``,
+                        parse_mode: "Markdown",
+                    })
+                }
+            } finally {
+                delete testingInProgress[chatId]
             }
             return
         }
@@ -958,7 +1016,7 @@ App.telegramService = (function () {
                         ],
                         [
                             {
-                                text: "⬅️ Back to Channels",
+                                text: "Back to Channels",
                                 callback_data: `cat_${catIndex}_${catReturnPage}_${chReturnPage}`,
                             },
                         ],
@@ -1015,7 +1073,7 @@ App.telegramService = (function () {
                         ],
                         [
                             {
-                                text: "⬅️ Back to Channels",
+                                text: "Back to Channels",
                                 callback_data: `cat_${catIndex}_${catReturnPage}_${chReturnPage}`,
                             },
                         ],
@@ -1031,8 +1089,17 @@ App.telegramService = (function () {
             return
         }
 
+        if (data.startsWith("favpage_")) {
+            await answer()
+            const page = parseInt(data.replace("favpage_", ""), 10) || 0
+            await showFavoritesView(token, chatId, messageId, page)
+            return
+        }
+
         if (data.startsWith("favview_")) {
-            const favIndex = parseInt(data.replace("favview_", ""), 10)
+            const parts = data.split("_")
+            const favIndex = parseInt(parts[1], 10)
+            const favReturnPage = parts[2] ? parseInt(parts[2], 10) : 0
             const favs = App.store.state.favorites || []
             const channel = favs[favIndex]
 
@@ -1046,15 +1113,20 @@ App.telegramService = (function () {
                 chat_id: chatId,
                 message_id: messageId,
                 text:
-                    `⭐ *[Favorite] ${channel.name}*\n` +
-                    `📁 Category: ${channel.category || channel.group || "General"}\n` +
-                    `🔗 Stream URL: \`${channel.url}\``,
+                    `*[Favorite] ${channel.name}*\n` +
+                    `Category: ${channel.category || channel.group || "General"}\n` +
+                    `Stream URL: \`${channel.url}\``,
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: "Test Stream", callback_data: `favtest_${favIndex}` }],
-                        [{ text: "Remove from Favorites", callback_data: `favdel_${favIndex}` }],
-                        [{ text: "Back to Favorites", callback_data: "show_favorites" }],
+                        [
+                            {
+                                text: "Remove from Favorites",
+                                callback_data: `favdel_${favIndex}_${favReturnPage}`,
+                            },
+                        ],
+                        [{ text: "Back to Favorites", callback_data: `favpage_${favReturnPage}` }],
                     ],
                 },
             })
@@ -1069,35 +1141,48 @@ App.telegramService = (function () {
                 await answer("Channel not found.")
                 return
             }
+            if (testingInProgress[chatId]) {
+                await answer("Test already in progress. Please wait.")
+                return
+            }
+            testingInProgress[chatId] = true
             await answer("Testing channel in player...")
 
-            const probe = await probeStream(channel.url, 8000)
-            if (probe.ok) {
-                await callTg(token, "sendMessage", {
-                    chat_id: chatId,
-                    text: `Stream Status: OK\n\`${channel.url}\``,
-                })
-            } else {
-                await callTg(token, "sendMessage", {
-                    chat_id: chatId,
-                    text: `Stream Status: Failed\n${probe.error}\n\`${channel.url}\``,
-                })
+            try {
+                const probe = await probeStream(channel.url, 10000)
+                if (probe.ok) {
+                    await callTg(token, "sendMessage", {
+                        chat_id: chatId,
+                        text: `Stream Status: OK\n\`${channel.url}\``,
+                        parse_mode: "Markdown",
+                    })
+                } else {
+                    await callTg(token, "sendMessage", {
+                        chat_id: chatId,
+                        text: `Stream Status: Failed\n${probe.error}\n\`${channel.url}\``,
+                        parse_mode: "Markdown",
+                    })
+                }
+            } finally {
+                delete testingInProgress[chatId]
             }
             return
         }
 
         if (data.startsWith("favdel_")) {
-            const favIndex = parseInt(data.replace("favdel_", ""), 10)
+            const parts = data.split("_")
+            const favIndex = parseInt(parts[1], 10)
+            const favReturnPage = parts[2] ? parseInt(parts[2], 10) : 0
             const favs = App.store.state.favorites || []
             const channel = favs[favIndex]
             if (channel) {
                 App.store.toggleFavorite(channel, channel.listId || listId)
                 App.store.notify(`Telegram removed: ${channel.name}`)
-                await answer("🗑️ Removed from favorites!")
+                await answer("Removed from favorites")
             } else {
                 await answer("Channel not found.")
             }
-            await showFavoritesView(token, chatId, messageId)
+            await showFavoritesView(token, chatId, messageId, favReturnPage)
             return
         }
     }

@@ -169,7 +169,7 @@ async function run() {
     check("navigating to home mounts home screen", !!document.getElementById("screen-home"))
     check(
         "on boot the factory public source is there",
-        document.querySelectorAll("#sourceList .row.source").length === 1 &&
+        document.querySelectorAll("#sourceList .row.source").length === 2 &&
             document.querySelector("#sourceList .row-name").textContent ===
                 "Free channels of the world" &&
             document.querySelector("#sourceList .kind").textContent === "M3U",
@@ -208,8 +208,13 @@ async function run() {
     await wait(80)
     check(
         "and the factory one can be deleted like any other",
-        document.querySelectorAll("#sourceList .row.source").length === 0,
+        document.querySelectorAll("#sourceList .row.source").length === 1,
     )
+    // delete the remaining default source so focus lands on the add row
+    press(403)
+    await wait(60)
+    document.getElementById("confirmOk").click()
+    await wait(80)
     check(
         "the focus returns to the add row",
         !!focused() && focused().classList.contains("add"),

@@ -244,7 +244,7 @@ check(
     (function () {
         const list = store.state.lists[0]
         return (
-            store.state.lists.length === 1 &&
+            store.state.lists.length === 2 &&
             list.name === "Free channels of the world" &&
             list.url === "https://iptv-org.github.io/iptv/index.country.m3u" &&
             list.kind === "m3u" &&
@@ -257,13 +257,13 @@ check(
     "and it is not duplicated when starting again",
     (function () {
         store.init()
-        return store.state.lists.length === 1
+        return store.state.lists.length === 2
     })(),
 )
 check(
     "if the user deletes it, it does not come back",
     (function () {
-        store.removeList(store.state.lists[0].id)
+        store.state.lists.slice().forEach((l) => store.removeList(l.id))
         store.init()
         return store.state.lists.length === 0
     })(),
