@@ -135,7 +135,10 @@ App.store = (function () {
         if (read(KEYS.seeded, false)) return
         const lists = []
         for (let i = 0; i < DEFAULT_LISTS.length; i++) {
-            const built = buildSource("url", { url: DEFAULT_LISTS[i].url, name: DEFAULT_LISTS[i].name })
+            const built = buildSource("url", {
+                url: DEFAULT_LISTS[i].url,
+                name: DEFAULT_LISTS[i].name,
+            })
             if (built.list) lists.push(built.list)
         }
         if (!lists.length) return
