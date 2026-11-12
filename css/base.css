@@ -6,7 +6,10 @@
 
 html,
 body {
-    height: 100%;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
 }
 
@@ -326,10 +329,16 @@ body {
 }
 
 .rail-btn svg {
+    flex: none;
+    display: block;
+    width: 22px;
+    height: 22px;
     color: currentColor;
 }
 .rail-btn span {
     color: inherit;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .rail-btn.active {

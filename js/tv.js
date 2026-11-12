@@ -36,7 +36,11 @@ App.tv = (function () {
     }
 
     function define(name, items, options) {
-        zones[name] = { items, onEdge: options && options.onEdge }
+        zones[name] = {
+            items,
+            onEdge: options && options.onEdge,
+            allowEmpty: !!(options && options.allowEmpty),
+        }
     }
 
     // Rows are grouped by offsetTop: what a TV layout needs, and what jsdom lacks.
@@ -93,9 +97,25 @@ App.tv = (function () {
     }
 
     function set(name, r, c) {
+        const nextZone = zones[name]
+        if (!nextZone) return
+        const prev = { current, row, col }
         current = name
         row = r || 0
         col = c || 0
+        const grid = matrix()
+        if (!grid.length && !nextZone.allowEmpty) {
+            if (prev.current && document.querySelector(".focused")) {
+                current = prev.current
+                row = prev.row
+                col = prev.col
+                return
+            }
+            if (name !== "rail" && zones.rail) {
+                set("rail", 0, 0)
+                return
+            }
+        }
         apply()
     }
 
@@ -107,7 +127,7 @@ App.tv = (function () {
     function move(direction) {
         if (!zones[current]) return
         const grid = matrix()
-        if (!grid.length) return
+        if (!grid.length) return edge(direction)
         const line = grid[row] || []
 
         if (direction === "up") {
@@ -135,8 +155,13 @@ App.tv = (function () {
         const element = focusedElement()
         if (!element) return
         if (element.tagName === "INPUT" && element.type === "file") element.click()
-        else if (field(element)) element.focus()
-        else element.click()
+        else if (field(element)) {
+            try {
+                element.focus({ preventScroll: true })
+            } catch {
+                element.focus()
+            }
+        } else element.click()
     }
 
     // Keys belong to the focused text field, textarea included.
@@ -201,6 +226,10 @@ App.tv = (function () {
         } catch {}
     }
 
+    function currentZone() {
+        return { zone: current, row, col }
+    }
+
     return {
         KEY,
         define,
@@ -211,5 +240,6 @@ App.tv = (function () {
         rows,
         listen,
         focusedElement,
+        current: currentZone,
     }
 })()

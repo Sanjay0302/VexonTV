@@ -129,6 +129,8 @@
 }
 
 .row .edit svg {
+    flex: none;
+    display: block;
     color: currentColor;
 }
 
@@ -168,6 +170,8 @@
 }
 
 .row.group .row-name {
+    flex: 1;
+    min-width: 0;
     font-size: 21px;
     font-weight: 500;
     color: var(--text-2);

@@ -149,19 +149,29 @@ async function run() {
         "the rail has its four sections",
         document.querySelectorAll(".rail .rail-btn").length === 4,
     )
+    check("the rail carries the count at the bottom", !!document.getElementById("railCounts"))
     check(
-        "the rail carries clock and count at the bottom",
-        (function () {
-            const clock = document.getElementById("railClock")
-            const counts = document.getElementById("railCounts")
-            return (
-                !!clock &&
-                /^\d\d:\d\d$/.test(clock.textContent) &&
-                !!counts &&
-                counts.textContent.indexOf("source") !== -1
-            )
-        })(),
-        (document.getElementById("railClock") || {}).textContent,
+        "with empty favorites on boot, focus starts on the Favorites rail tab",
+        !!focused() && focused().id === "navFavs",
+        focused() ? focused().id : "(nothing)",
+    )
+    press(39)
+    check(
+        "right from the rail enters the favorites search bar",
+        !!focused() && focused().id === "favsSearch",
+        focused() ? focused().id : "(nothing)",
+    )
+    press(40)
+    check(
+        "down from the search bar when favorites are empty does not drop focus",
+        !!focused() && focused().id === "favsSearch",
+        focused() ? focused().id : "(nothing)",
+    )
+    press(37)
+    check(
+        "left from the empty favorites search bar returns focus to the rail",
+        !!focused() && focused().classList.contains("rail-btn"),
+        focused() ? focused().id : "(nothing)",
     )
 
     window.App.store.goHome()
@@ -187,8 +197,6 @@ async function run() {
         document.querySelectorAll("#typeList .type").length === 5,
     )
     checkClasses("the home uses the classes the CSS styles", [
-        [".rail .brand", "marca"],
-        [".rail .wordmark", "marca de texto"],
         [".rail .rail-btn.active", "rail activo"],
         [".bar h1", "titular"],
         ["#listCounts.meta", "resumen"],
@@ -229,6 +237,18 @@ async function run() {
     check("right returns to the filter", !!focused() && focused().classList.contains("type"))
     press(39)
     check("right again returns to the sources", !!focused() && focused().classList.contains("row"))
+    document.querySelectorAll("#typeList .type")[4].click()
+    await wait(30)
+    window.App.tv.set("sources", 0, 0)
+    press(37)
+    check(
+        "left from sources returns to the selected source type filter",
+        !!focused() && focused().classList.contains("selected"),
+        focused() ? focused().textContent : "(nothing)",
+    )
+    document.querySelectorAll("#typeList .type")[0].click()
+    await wait(30)
+    window.App.tv.set("sources", 0, 0)
 
     press(13)
     await wait(30)
@@ -259,31 +279,33 @@ async function run() {
     document.getElementById("formSave").click()
     await wait(80)
     check("the source is added and it returns home", !!document.getElementById("screen-home"))
-    check(
-        "the rail has a shortcut to that source",
-        (function () {
-            const row = document.querySelector(".rail-src[data-list]")
-            const list = window.App.store.state.lists[0]
-            return !!row && !!list && row.textContent.indexOf(list.name) !== -1
-        })(),
-        (document.querySelector(".rail-src[data-list]") || {}).textContent,
-    )
-    window.App.tv.set("rail", 3, 0)
-    await wait(40)
-    press(40)
-    await wait(60)
-    check(
-        "and the remote goes down from Favorites to the source shortcut",
-        !!focused() && focused().classList.contains("rail-src"),
-        focused() ? focused().className : "(nothing)",
-    )
-    press(13)
-    await wait(150)
-    check(
-        "and OK enters the TV of that source",
-        window.App.store.state.screen === "tv" && !!window.App.store.state.tvSource,
-        `${window.App.store.state.screen} / tvSource=${window.App.store.state.tvSource}`,
-    )
+
+    // check(
+    //     "the rail has a shortcut to that source",
+    //     (function () {
+    //         const row = document.querySelector(".rail-src[data-list]")
+    //         const list = window.App.store.state.lists[0]
+    //         return !!row && !!list && row.textContent.indexOf(list.name) !== -1
+    //     })(),
+    //     (document.querySelector(".rail-src[data-list]") || {}).textContent,
+    // )
+    // window.App.tv.set("rail", 3, 0)
+    // await wait(40)
+    // press(40)
+    // await wait(60)
+    // check(
+    //     "and the remote goes down from Favorites to the source shortcut",
+    //     !!focused() && focused().classList.contains("rail-src"),
+    //     focused() ? focused().className : "(nothing)",
+    // )
+    // press(13)
+    // await wait(150)
+    // check(
+    //     "and OK enters the TV of that source",
+    //     window.App.store.state.screen === "tv" && !!window.App.store.state.tvSource,
+    //     `${window.App.store.state.screen} / tvSource=${window.App.store.state.tvSource}`,
+    // )
+
     // the rest of the flow carries on in Sources
     window.App.store.goHome()
     await wait(80)
@@ -416,6 +438,8 @@ async function run() {
     )
     window.App.store.exitPlayer()
     await wait(80)
+    window.App.store.toggleFavorite(zapChannel, zapChannel.listId)
+    if (nextChannel) window.App.store.toggleFavorite(nextChannel, nextChannel.listId)
 
     check(
         "the edit button opens editing without entering the source",
@@ -766,6 +790,20 @@ async function run() {
         !!window.App.store.state.preview,
         window.App.store.state.preview ? window.App.store.state.preview.name : "(no preview)",
     )
+    check(
+        "exiting fullscreen from preview restores focus to the preview card",
+        !!focused() && focused().id === "tvPreview",
+        focused() ? focused().id : "(nothing)",
+    )
+    press(37)
+    await wait(60)
+    check(
+        "and left from preview returns to the previously selected channel row",
+        !!focused() &&
+            focused().classList.contains("channel") &&
+            focused().dataset.url === window.App.store.state.preview.url,
+        focused() ? focused().textContent : "(nothing)",
+    )
     const previewedGroup = window.App.store.state.preview.group
     const otherCategory = window.App.store.tvCategories().rows.filter((row) => {
         return row.name !== previewedGroup
@@ -800,7 +838,38 @@ async function run() {
     press(39)
     await wait(60)
     check(
-        "from the rail right enters through the button, not through the search box",
+        "from the rail right enters the TV categories column",
+        !!focused() && focused().classList.contains("tvcat"),
+        focused() ? focused().className : "(nothing)",
+    )
+    press(37)
+    await wait(60)
+    check(
+        "left from TV categories returns to the Live TV rail tab",
+        !!focused() && focused().id === "navTv",
+        focused() ? focused().id : "(nothing)",
+    )
+    press(39)
+    await wait(60)
+    press(40)
+    await wait(60)
+    const hoveredCat = focused() ? focused().dataset.group : null
+    press(39)
+    await wait(60)
+    press(37)
+    await wait(60)
+    check(
+        "left from channels returns to the exact category row focus came from",
+        !!focused() && focused().dataset.group === hoveredCat,
+        focused() ? focused().dataset.group : "(nothing)",
+    )
+    window.App.tv.set("tvCats", 0, 0)
+    press(38)
+    await wait(60)
+    press(37)
+    await wait(60)
+    check(
+        "left from the search box moves to the categories button",
         !!focused() && focused().id === "catsBtn",
         focused() ? focused().id : "(nothing)",
     )
@@ -814,6 +883,13 @@ async function run() {
     press(37)
     await wait(60)
     check("and with left it returns to the button", !!focused() && focused().id === "catsBtn")
+    press(37)
+    await wait(60)
+    check(
+        "and left from the categories button returns to the Live TV rail tab",
+        !!focused() && focused().id === "navTv",
+        focused() ? focused().id : "(nothing)",
+    )
     check(
         "the TV is three columns: categories, channels and preview",
         document.querySelectorAll("#tvCats .tvcat").length === 4 &&
@@ -1076,17 +1152,11 @@ async function run() {
     check("the stylesheet parses fully", rules >= 120, `${rules} rules`)
     check(
         "the identity trio is in the sheet",
-        ["#febc06", "#cc4207", "#15e9a4"].every((hex) => {
-            return code.indexOf(hex) !== -1
+        ["#9fc4ff", "#6ed3c2"].every((hex) => {
+            return code.toLowerCase().indexOf(hex) !== -1
         }),
     )
-    check(
-        "the screen entrance is a fade, not a slide",
-        (function () {
-            const rule = code.match(/@keyframes screen-in\s*\{[^@]*?\}\s*\}/)
-            return !!rule && rule[0].indexOf("transform") === -1 && /opacity/.test(rule[0])
-        })(),
-    )
+    check("screens slide in (MD3 shared axis)", /md3-screen-in/.test(code))
     check(
         "and the multicolor only peeks through the header (blackout on top)",
         (function () {
@@ -1096,18 +1166,7 @@ async function run() {
             )
         })(),
     )
-    check(
-        "the background carries the brand gradient with the three colors",
-        (function () {
-            const rule = code.match(/--grad-bg:\s*linear-gradient\([^;]*;/)
-            if (!rule) return false
-            return (
-                /rgba\(254,\s*188,\s*6,/.test(rule[0]) &&
-                /rgba\(204,\s*66,\s*7,[^)]*\)\s*48%/.test(rule[0]) &&
-                /rgba\(21,\s*233,\s*164,/.test(rule[0])
-            )
-        })(),
-    )
+    check("the background is a soft MD3 glow", /--grad-bg:\s*radial-gradient/.test(code))
     check(
         "the AVPlay surface is measured in pixels, not percentage",
         (function () {

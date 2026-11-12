@@ -148,15 +148,18 @@ App.uiScreens = App.uiScreens || {}
                 return
             }
             setHole()
-            if (supportsHole()) document.body.classList.add("previewing")
+            if (supportsHole() && player.hardware()) document.body.classList.add("previewing")
             player.play(state.preview.url, videoRect())
             function onResize() {
                 setHole()
                 player.play(state.preview.url, videoRect())
             }
+            const screenEl = document.getElementById("screen-tv")
             window.addEventListener("resize", onResize)
+            if (screenEl) screenEl.addEventListener("animationend", onResize)
             return function () {
                 window.removeEventListener("resize", onResize)
+                if (screenEl) screenEl.removeEventListener("animationend", onResize)
                 document.body.classList.remove("previewing")
                 player.stop()
             }

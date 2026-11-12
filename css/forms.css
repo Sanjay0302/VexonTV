@@ -37,6 +37,7 @@
 }
 
 .type-icon {
+    flex: none;
     display: grid;
     place-items: center;
     width: 42px;
@@ -48,6 +49,8 @@
 }
 
 .type-icon svg {
+    flex: none;
+    display: block;
     width: 24px;
     height: 24px;
 }
@@ -115,6 +118,13 @@
         background-color var(--dur-fast) var(--ease);
 }
 
+.search > svg {
+    flex: none;
+    display: block;
+    width: 22px;
+    height: 22px;
+}
+
 .search input {
     flex: 1;
     min-width: 0;
@@ -137,16 +147,17 @@
 
 .search-clear {
     flex: none;
-    display: grid;
-    place-items: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 30px;
     height: 30px;
+    padding: 0;
     border: 1px solid var(--line-2);
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-2);
     font: inherit;
-    font-size: 20px;
     line-height: 1;
     cursor: pointer;
     outline: none;
@@ -156,6 +167,13 @@
         transform var(--dur-fast) var(--ease),
         box-shadow var(--dur-fast) var(--ease),
         border-color var(--dur-fast) var(--ease);
+}
+
+.search-clear svg {
+    flex: none;
+    display: block;
+    width: 14px;
+    height: 14px;
 }
 
 .search-clear:hover,

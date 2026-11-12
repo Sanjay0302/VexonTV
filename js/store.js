@@ -877,13 +877,17 @@ App.store = (function () {
 
     function openRecents() {
         set({ screen: "recents" })
-        focus("recentsSearch")
+        if (visibleRecents().total) focus("recentsList")
+        else if (state.recent.length) focus("recentsSearch")
+        else focus("rail", 2)
     }
 
     function openFavorites() {
         state.search.favorites = read(`${KEYS.search}favorites`, "") || ""
         set({ screen: "favs" })
-        focus("favsSearch")
+        if (visibleFavorites().total) focus("favsList")
+        else if (state.favorites.length) focus("favsSearch")
+        else focus("rail", 3)
     }
 
     function openAdd() {
@@ -1072,10 +1076,19 @@ App.store = (function () {
     function play(channel, listId, list) {
         if (!listId && channel.listId) listId = channel.listId
         const list_ = listById(listId)
+        const cur = App.tv && App.tv.current ? App.tv.current() : null
         const origin =
             state.screen === "player" && state.playing
                 ? state.playing.origin
-                : { screen: state.screen, zone: zoneFor(state.screen) }
+                : {
+                      screen: state.screen,
+                      zone:
+                          cur && cur.zone && cur.zone !== "playerIdle"
+                              ? cur.zone
+                              : zoneFor(state.screen),
+                      row: cur && cur.zone && cur.zone !== "playerIdle" ? cur.row : 0,
+                      col: cur && cur.zone && cur.zone !== "playerIdle" ? cur.col : 0,
+                  }
 
         state.playing = { channel, listId, origin }
         state.playStatus = "opening"
@@ -1248,7 +1261,7 @@ App.store = (function () {
         state.menuFocus = false
         if (origin && origin.screen) {
             set({ screen: origin.screen })
-            focus(origin.zone)
+            focus(origin.zone, origin.row, origin.col)
             return
         }
         goHome()

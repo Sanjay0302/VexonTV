@@ -73,31 +73,31 @@ App.uiKit = (function () {
 
     const iconList = svg(
         html`<path
-            d="M3 6h18M3 12h18M3 18h12"
+            d="M3.5 6.5h17M3.5 12h17M3.5 17.5h12"
             stroke="currentColor"
             stroke-width="1.8"
             fill="none"
             stroke-linecap="round"
         />`,
-        24,
+        22,
     )
     const iconTv = svg(
         html`<rect
-                x="2.5"
+                x="3"
                 y="5"
-                width="19"
-                height="13"
+                width="18"
+                height="12.5"
                 rx="2"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.8"
             /><path
-                d="M8.5 21h7"
+                d="M8.5 20.5h7"
                 stroke="currentColor"
                 stroke-width="1.8"
                 stroke-linecap="round"
             />`,
-        24,
+        22,
     )
     const iconClock = svg(
         html`<circle
@@ -114,17 +114,17 @@ App.uiKit = (function () {
                 stroke-width="1.8"
                 stroke-linecap="round"
             />`,
-        24,
+        22,
     )
     const iconStar = svg(
         html`<path
-            d="M12 4.5l2.3 4.8 5.2.7-3.8 3.6.9 5.2-4.6-2.5-4.6 2.5.9-5.2-3.8-3.6 5.2-.7z"
+            d="M12 3.2l2.6 5.3 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"
             fill="none"
             stroke="currentColor"
             stroke-width="1.8"
             stroke-linejoin="round"
         />`,
-        24,
+        22,
     )
     const iconSearch = svg(
         html`<circle
@@ -140,6 +140,17 @@ App.uiKit = (function () {
                 stroke-width="1.8"
                 stroke-linecap="round"
             />`,
+        22,
+    )
+    const iconClose = svg(
+        html`<path
+            d="M7 7l10 10M17 7L7 17"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+        />`,
+        14,
     )
     const iconLink = svg(
         html`<path
@@ -277,29 +288,86 @@ App.uiKit = (function () {
         return program.title + span
     }
 
-    // Rail clock: the system time, refreshed by the minute. A clock that ticks every
-    // second is a distraction on a TV.
-    function timeText() {
-        const now = new Date()
-        return `${`0${now.getHours()}`.slice(-2)}:${`0${now.getMinutes()}`.slice(-2)}`
-    }
+    // // Rail clock: the system time, refreshed by the minute. A clock that ticks every
+    // // second is a distraction on a TV.
+    // function timeText() {
+    //     const now = new Date()
+    //     return `${`0${now.getHours()}`.slice(-2)}:${`0${now.getMinutes()}`.slice(-2)}`
+    // }
 
-    function useClock() {
-        const state = useState(timeText())
-        const setTime = state[1]
-        useEffect(() => {
-            const tick = setInterval(() => {
-                setTime(timeText())
-            }, 20000)
-            return function () {
-                clearInterval(tick)
-            }
-        }, [])
-        return state[0]
-    }
+    // function useClock() {
+    //     const state = useState(timeText())
+    //     const setTime = state[1]
+    //     useEffect(() => {
+    //         const tick = setInterval(() => {
+    //             setTime(timeText())
+    //         }, 20000)
+    //         return function () {
+    //             clearInterval(tick)
+    //         }
+    //     }, [])
+    //     return state[0]
+    // }
 
     // Sidebar: the brand, the four sections, a shortcut to each source and, at the
     // bottom, the clock and the count. Anchored to the grid: 64px sections, 56px sources.
+    function ScallopClock() {
+        const state = useState(() => new Date())
+        const now = state[0]
+        const setNow = state[1]
+
+        useEffect(() => {
+            const timer = setInterval(() => {
+                setNow(new Date())
+            }, 1000)
+            return () => clearInterval(timer)
+        }, [])
+
+        const sec = now.getSeconds()
+        const min = now.getMinutes()
+        const hr = now.getHours() % 12
+
+        const hrAngle = (hr + min / 60) * 30 + 180
+        const minAngle = (min + sec / 60) * 6 + 180
+        const secAngle = sec * 6
+
+        const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        const dayStr = DAYS[now.getDay()] || "Mon"
+        const dateNum = String(now.getDate()).padStart(2, "0")
+        const dayChars = dayStr.split("")
+        const dateChars = dateNum.split("")
+
+        const hourStyle = `transform: rotate(${hrAngle}deg);`
+        const minStyle = `transform: rotate(${minAngle}deg);`
+        const secStyle = `transform: rotate(${secAngle + 180}deg) translateY(420%);`
+        const dateStyle = `transform: translateY(-50%) rotate(${secAngle}deg);`
+
+        return html`<figure class="scallop-clock" aria-label="Clock">
+            <div class="scallop-edges">
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+                <div class="scallop-edge"></div>
+            </div>
+            <div class="scallop-hand scallop-hour" style=${hourStyle}></div>
+            <div class="scallop-hand scallop-minute" style=${minStyle}></div>
+            <div class="scallop-date" aria-hidden="true" style=${dateStyle}>
+                <span>${dayChars[0] || ""}</span><span>${dayChars[1] || ""}</span
+                ><span>${dayChars[2] || ""}</span> <span>${dateChars[0] || ""}</span
+                ><span>${dateChars[1] || ""}</span>
+            </div>
+            <div class="scallop-second" style=${secStyle}></div>
+        </figure>`
+    }
+
     function Rail(props) {
         const items = [
             {
@@ -340,11 +408,7 @@ App.uiKit = (function () {
             },
         ]
         const nav = useRef(null)
-        const clock = useClock()
         const stats = store.stats()
-        const sources = store.state.lists
-            .filter((list) => store.listKind(list) !== "telegram")
-            .slice(0, 3)
 
         useEffect(() => {
             const rail = nav.current
@@ -358,7 +422,6 @@ App.uiKit = (function () {
                     ? `${element.offsetTop + Math.round((element.offsetHeight - height) / 2)}px`
                     : "0px",
             )
-            // The marker stretches as it travels: you see the trip, not a jump.
             rail.classList.add("moving")
             const timer = setTimeout(() => {
                 rail.classList.remove("moving")
@@ -370,12 +433,8 @@ App.uiKit = (function () {
 
         return html`<nav class="rail" ref=${nav}>
             <span class="rail-glow" aria-hidden="true"></span>
-            <div class="brand" aria-hidden="true">
-                <img class="brand-img" src="brand.png" alt="" />
-                <span class="wordmark">
-                    <span class="wordmark-name">VexonTV</span>
-                    <span class="wordmark-tag">IPTV Player</span>
-                </span>
+            <div class="rail-top">
+                <${ScallopClock} />
             </div>
             <div class="rail-nav">
                 ${items.map((item) => {
@@ -390,32 +449,7 @@ App.uiKit = (function () {
                     </button>`
                 })}
             </div>
-            ${
-                sources.length
-                    ? html`<div class="rail-block">
-                          <p class="rail-title">Sources</p>
-                          ${sources.map((list) => {
-                              return html`<button
-                                  class=${`rail-src${
-                                      props.screen === "tv" && store.state.tvSource === list.id
-                                          ? " selected"
-                                          : ""
-                                  }`}
-                                  tabindex="-1"
-                                  data-list=${list.id}
-                                  onClick=${function () {
-                                      store.openSource(list.id)
-                                  }}
-                              >
-                                  <span class="rail-src-name">${list.name}</span>
-                                  <span class="rail-src-kind">${store.listLabel(list)}</span>
-                              </button>`
-                          })}
-                      </div>`
-                    : null
-            }
             <div class="rail-foot">
-                <p class="rail-clock" id="railClock">${clock}</p>
                 <p class="rail-counts" id="railCounts">${stats.counts}</p>
             </div>
         </nav>`
@@ -595,7 +629,7 @@ App.uiKit = (function () {
                           aria-label="Clear search"
                           onClick=${onClear}
                       >
-                          ×
+                          ${iconClose}
                       </button>`
                     : html`<span class="search-count" id=${props.countId}>${props.count}</span>`
             }

@@ -1,29 +1,50 @@
 :root {
-    --black: #050505;
-    --surface: rgba(255, 255, 255, 0.035);
-    --surface-2: rgba(255, 255, 255, 0.075);
-    --surface-3: rgba(255, 255, 255, 0.11);
+    --black: #111418;
+    --surface: rgba(255, 255, 255, 0.04);
+    --surface-2: rgba(255, 255, 255, 0.08);
+    --surface-3: rgba(255, 255, 255, 0.12);
+    --surface-low: #191c20;
+    --surface-container: #1d2024;
+    --surface-high: #282a2f;
+    --surface-highest: #33353a;
 
     --line: rgba(255, 255, 255, 0.08);
-    --line-2: rgba(255, 255, 255, 0.16);
+    --line-2: rgba(255, 255, 255, 0.14);
     --line-3: rgba(255, 255, 255, 0.3);
 
-    --text: #f7f7f6;
-    --text-2: #adadad;
-    --text-3: #74746f;
+    --text: #e2e2e6;
+    --text-2: #c3c6cf;
+    --text-3: #8d9199;
 
-    --amber: #febc06;
-    --ember: #cc4207;
-    --mint: #15e9a4;
+    --primary: #9fc4ff;
+    --on-primary: #003062;
+    --primary-container: #00478a;
+    --on-primary-container: #d4e3ff;
+    --secondary-container: #3e4758;
+    --on-secondary-container: #d9e3f8;
+    --tertiary: #6ed3c2;
+    --on-tertiary: #003730;
+    --tertiary-container: #00504a;
+    --on-tertiary-container: #8ef2e0;
+    --error: #ffb4ab;
+    --on-error: #690005;
+    --inverse-surface: #e2e2e6;
+    --inverse-on-surface: #2f3033;
+    --outline: #8d9199;
+    --outline-variant: #43474e;
 
-    --live: var(--ember);
-    --saved: var(--amber);
-    --ok: var(--mint);
+    --amber: var(--primary);
+    --ember: var(--error);
+    --mint: var(--tertiary);
 
-    --grad-ink: linear-gradient(92deg, var(--amber) 0%, var(--mint) 100%);
-    --grad-bar: linear-gradient(180deg, var(--amber) 0%, var(--mint) 100%);
-    --grad-line: linear-gradient(90deg, var(--amber), var(--ember) 48%, var(--mint));
-    --on-accent: #080807;
+    --live: var(--error);
+    --saved: var(--primary);
+    --ok: var(--tertiary);
+
+    --grad-ink: linear-gradient(92deg, #9fc4ff 0%, #6ed3c2 100%);
+    --grad-bar: linear-gradient(180deg, #9fc4ff 0%, #6ed3c2 100%);
+    --grad-line: linear-gradient(90deg, #9fc4ff, #6ed3c2);
+    --on-accent: #003062;
 
     --hole-x: 0px;
     --hole-y: 0px;
@@ -35,25 +56,19 @@
     --rail-mark-h: 0px;
     --rail-mark-y: 0px;
 
-    /* Rail width. The grid anchors to this measurement so one line falls right on the
-     sidebar edge (184 is not a multiple of 64). */
-    --rail: 192px;
+    --rail: 216px;
+    --rail-h: 100vh;
     --grid: 64px;
-    --grid-line: rgba(255, 255, 255, 0.05);
+    --grid-line: transparent;
     --grad-fade: linear-gradient(180deg, rgba(5, 5, 5, 0) 0%, var(--black) 24%);
-    --grad-bg: linear-gradient(
-        90deg,
-        rgba(254, 188, 6, 0.3),
-        rgba(204, 66, 7, 0.23) 48%,
-        rgba(21, 233, 164, 0.3)
-    );
+    --grad-bg: radial-gradient(120% 80% at 85% 0%, rgba(159, 196, 255, 0.1), transparent 60%);
     --focus: #fff;
-    --ring: rgba(255, 255, 255, 0.5);
+    --ring: rgba(159, 196, 255, 0.7);
 
     --r-sm: 8px;
     --r-md: 12px;
-    --r-lg: 18px;
-    --r-xl: 26px;
+    --r-lg: 16px;
+    --r-xl: 28px;
 
     --ease: cubic-bezier(0.32, 0.72, 0, 1);
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);

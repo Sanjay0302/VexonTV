@@ -4,12 +4,16 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=1920, user-scalable=no" />
         <title>VexonTV</title>
+        <link rel="icon" type="image/png" href="brand.png" />
         <!-- Inline on purpose: this is the first frame, before any stylesheet loads. -->
         <style>
             html,
             body {
+                position: fixed;
+                inset: 0;
+                width: 100vw;
+                height: 100vh;
                 margin: 0;
-                height: 100%;
                 overflow: hidden;
             }
             /* On body, not html: the root background propagates to the canvas and would
@@ -88,6 +92,7 @@
         <link rel="stylesheet" href="css/player.css" />
         <link rel="stylesheet" href="css/overlays.css" />
         <link rel="stylesheet" href="css/media.css" />
+        <link rel="stylesheet" href="css/md3.css" />
     </head>
     <body>
         <div id="splash">
