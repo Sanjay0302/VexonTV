@@ -608,19 +608,26 @@ App.uiKit = (function () {
             if (props.onClear) props.onClear()
         }
 
-        return html`<div class="search">
-            ${iconSearch}
-            <input
-                id=${props.id}
-                ref=${inputRef}
-                type="text"
-                placeholder=${props.placeholder}
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                tabindex="-1"
-                onInput=${onInput}
-            />
+        return html`<div class=${`search-split${hasValue ? " has-clear" : ""}`}>
+            <div class="search">
+                ${iconSearch}
+                <input
+                    id=${props.id}
+                    ref=${inputRef}
+                    type="text"
+                    placeholder=${props.placeholder}
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    tabindex="-1"
+                    onInput=${onInput}
+                />
+                ${
+                    props.count !== undefined && props.count !== null && props.count !== ""
+                        ? html`<span class="search-count" id=${props.countId}>${props.count}</span>`
+                        : null
+                }
+            </div>
             ${
                 hasValue
                     ? html`<button
@@ -631,7 +638,7 @@ App.uiKit = (function () {
                       >
                           ${iconClose}
                       </button>`
-                    : html`<span class="search-count" id=${props.countId}>${props.count}</span>`
+                    : null
             }
         </div>`
     }

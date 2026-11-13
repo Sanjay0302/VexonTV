@@ -863,9 +863,7 @@ App.store = (function () {
     }
 
     function openTvCategory(name) {
-        const patch = { catName: name }
-        if (state.preview && state.catName !== name) patch.preview = null
-        set(patch)
+        set({ catName: name })
         focus("tvChannels", 0, 0)
     }
 

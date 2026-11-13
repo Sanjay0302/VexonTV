@@ -275,6 +275,44 @@ async function run() {
     check("the focus enters the first field", !!focused() && focused().id === "field-url")
     check("the type can be changed", !!document.getElementById("changeTypeBtn"))
 
+    press(38)
+    await wait(60)
+    check(
+        "up from the first field focuses the Change type button",
+        !!focused() && focused().id === "changeTypeBtn",
+    )
+    press(40)
+    await wait(60)
+    check(
+        "down from Change type returns to the form fields",
+        !!focused() && focused().id === "field-url",
+    )
+
+    // Test navigation in the File (USB) type form:
+    document.getElementById("changeTypeBtn").click()
+    await wait(40)
+    document.querySelector('#addTypes .typecard[data-type="file"]').click()
+    await wait(40)
+    check("file form opens with pick button focused", !!focused() && focused().id === "pickFile")
+    press(40) // down -> field-name
+    await wait(40)
+    check("down moves to field-name", !!focused() && focused().id === "field-name")
+    press(40) // down -> formSave in actions
+    await wait(40)
+    check(
+        "down from field-name directly focuses Save in form actions",
+        !!focused() && focused().id === "formSave",
+    )
+    press(38) // up -> field-name
+    await wait(40)
+    check("up from Save moves back to field-name", !!focused() && focused().id === "field-name")
+
+    // Return to url form for remaining test suite
+    document.getElementById("changeTypeBtn").click()
+    await wait(40)
+    document.querySelector('#addTypes .typecard[data-type="url"]').click()
+    await wait(40)
+
     typeInto("#field-url", "http://localhost:8000/test/sample.m3u")
     document.getElementById("formSave").click()
     await wait(80)
@@ -811,15 +849,15 @@ async function run() {
     document.querySelector(`#tvCats .tvcat[data-group="${otherCategory.name}"]`).click()
     await wait(120)
     check(
-        "changing category releases the preview",
-        !window.App.store.state.preview,
+        "changing category keeps the preview playing until a new channel is selected",
+        !!window.App.store.state.preview,
         window.App.store.state.preview
             ? `sigue ${window.App.store.state.preview.name}`
             : "(suelto)",
     )
     check(
-        "and the card returns to the empty state",
-        !!document.querySelector("#tvPreview #previewEmpty"),
+        "and the preview pane continues showing the stage",
+        !!document.querySelector("#tvPreview #previewStage"),
     )
 
     press(10009)

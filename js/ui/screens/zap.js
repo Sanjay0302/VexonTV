@@ -91,10 +91,6 @@ App.uiScreens = App.uiScreens || {}
 
         return html`<div class="zap fav-zap" id="favZapPanel">
             <div class="zap-list" id="zapFavChannels">
-                <p class="zap-head" id="favZapHead">
-                    <span>Favorites</span>
-                    <span class="zap-hint">OK watch · BACK close</span>
-                </p>
                 ${
                     favorites.length === 0
                         ? html`<p class="zap-empty">
@@ -121,7 +117,6 @@ App.uiScreens = App.uiScreens || {}
                         <span class="zap-info">
                             <span class="zap-top">
                                 <span class="row-name">${channel.name}</span>
-                                <span class="saved">★</span>
                             </span>
                             ${
                                 program

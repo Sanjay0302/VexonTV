@@ -188,7 +188,7 @@ App.uiScreens = App.uiScreens || {}
                 })}
                 ${
                     type === "file"
-                        ? html`<label for="pickFile">Fichero .m3u</label>
+                        ? html`<label for="pickFile">.m3u only</label>
                               <button
                                   class="btn pick"
                                   id="pickFile"
