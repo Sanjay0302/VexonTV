@@ -182,6 +182,23 @@ App.tv = (function () {
             const field = document.activeElement
             if (event.keyCode === KEY.UP || event.keyCode === KEY.DOWN) {
                 field.blur()
+            } else if (event.keyCode === KEY.RIGHT) {
+                const len = field.value ? field.value.length : 0
+                const atEnd = field.selectionStart === len && field.selectionEnd === len
+                if (atEnd) {
+                    field.blur()
+                    move("right")
+                    return
+                }
+                return
+            } else if (event.keyCode === KEY.LEFT) {
+                const atStart = field.selectionStart === 0 && field.selectionEnd === 0
+                if (atStart) {
+                    field.blur()
+                    move("left")
+                    return
+                }
+                return
             } else {
                 if (event.keyCode === KEY.BACK) field.blur()
                 return

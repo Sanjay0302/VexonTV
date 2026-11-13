@@ -50,8 +50,9 @@ App.player = (function () {
         return !!avplay()
     }
 
-    function resize() {
-        if (avplay()) setRect()
+    function resize(rect) {
+        if (rect) setRect(rect)
+        else if (avplay()) setRect()
     }
 
     let lastRect = null

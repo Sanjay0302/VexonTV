@@ -16,6 +16,18 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
         )
     }
 
+    function searchZone(name, selector, options) {
+        tv.define(
+            name,
+            () => {
+                const items = ui.qsa(selector)
+                // In search-split, the text input and clear button sit side-by-side in one row
+                return items.length ? [items] : []
+            },
+            options,
+        )
+    }
+
     function indexWithClass(selector, cls) {
         const items = ui.qsa(selector)
         for (let i = 0; i < items.length; i++) {
@@ -156,7 +168,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
-        zone("tvSearch", "#tvSearch, #screen-tv .search-clear", {
+        searchZone("tvSearch", "#tvSearch, #screen-tv .search-clear", {
             onEdge: function (dir) {
                 if (dir === "up") tv.set("tvActions", 0, 0)
                 else if (dir === "left") tv.set("tvActions", 0, 0)
@@ -191,7 +203,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
-        zone("recentsSearch", "#recentsSearch, #screen-recents .search-clear", {
+        searchZone("recentsSearch", "#recentsSearch, #screen-recents .search-clear", {
             onEdge: function (dir) {
                 if (dir === "up" || dir === "left") tv.set("rail", activeRailIndex(), 0)
                 else if (dir === "down") tv.set("recentsList", 0, 0)
@@ -205,7 +217,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
-        zone("favsSearch", "#favsSearch, #screen-favs .search-clear", {
+        searchZone("favsSearch", "#favsSearch, #screen-favs .search-clear", {
             onEdge: function (dir) {
                 if (dir === "up" || dir === "left") tv.set("rail", activeRailIndex(), 0)
                 else if (dir === "down") tv.set("favsList", 0, 0)
@@ -227,7 +239,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
-        zone("catSearch", "#catSearch, #screen-cats .search-clear", {
+        searchZone("catSearch", "#catSearch, #screen-cats .search-clear", {
             onEdge: function (dir) {
                 if (dir === "up") tv.set("catActions", 0, 0)
                 else if (dir === "left") tv.set("catActions", 0, 0)
@@ -290,7 +302,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             },
         })
 
-        zone("zapFavChannels", "#zapFavChannels .zapch", {})
+        zone("zapFavChannels", "#zapFavChannels .zapch", { allowEmpty: true })
 
         zone("playError", "#playError .btn")
 
@@ -375,6 +387,7 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             return true
         }
         if (code === tv.KEY.ENTER && store.commitDigits()) return true
+        if (store.state.confirm) return false
         if (store.state.screen !== "player") return false
 
         if (code === tv.KEY.CH_UP) {
@@ -431,13 +444,17 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
         return false
     }
 
+    // Locks the rail and app layout height to the maximum viewport height observed.
+    // When virtual keyboards (TV/mobile) or browser DevTools pop up from the bottom,
+    // window.innerHeight drops, which would otherwise compress the flex container,
+    // shift the vertically centered navigation buttons, and push layout elements around.
+    // NOTE: Use window.innerHeight (not window.screen.height). window.screen.height
+    // is the physical hardware monitor resolution (e.g. 1080px), which would overflow
+    // and push the bottom margin outside windowed or non-fullscreen desktop browsers.
     function lockRailHeight() {
         let maxH = 0
         function update() {
-            const h = Math.max(
-                window.innerHeight || 0,
-                (window.screen && window.screen.height) || 0,
-            )
+            const h = window.innerHeight || 0
             if (h > maxH) {
                 maxH = h
                 document.documentElement.style.setProperty("--rail-h", `${maxH}px`)
@@ -451,7 +468,16 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
         lockRailHeight()
         store.init()
         defineZones()
-        tv.listen(onKey, { onFocus: store.focusChanged })
+        tv.listen(onKey, {
+            onFocus: (el) => {
+                const app = document.querySelector(".app")
+                if (app) {
+                    const isRail = el && !!el.closest(".rail")
+                    app.classList.toggle("rail-open", isRail)
+                }
+                store.focusChanged(el)
+            },
+        })
         window.addEventListener("scroll", () => {
             if (window.scrollX !== 0 || window.scrollY !== 0) {
                 window.scrollTo(0, 0)

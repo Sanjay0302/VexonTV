@@ -32,7 +32,9 @@ App.ui = (function () {
 
         const state = store.state
         const playing = state.screen === "player"
-        return html`<div class=${`app${playing ? " playing" : ""}`}>
+        const focusedEl = document.querySelector(".focused")
+        const railOpen = focusedEl && !!focusedEl.closest(".rail")
+        return html`<div class=${`app${playing ? " playing" : ""}${railOpen ? " rail-open" : ""}`}>
             <div class="backdrop" id="backdrop" aria-hidden="true"></div>
             <${Rail} screen=${state.screen} />
             <main class="main">

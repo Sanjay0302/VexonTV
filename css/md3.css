@@ -12,16 +12,135 @@ body::before,
 }
 
 /* Sidebar: text-only navigation, MD3 navigation rail */
+/* Layout and type scale - Elevated curtain card
+   Uses --rail-h (managed by lockRailHeight in js/app.js) so that virtual keyboards
+   or inspect windows docking at the bottom do not squeeze the rail, shift the
+   centered nav buttons, or push the elevated card's bottom margin out of view. */
+.app {
+    display: flex;
+    position: relative;
+    width: 100vw;
+    height: var(--rail-h);
+    min-height: var(--rail-h);
+    overflow: hidden;
+    background: var(--surface-low);
+}
+
 .rail {
     position: relative;
     background: var(--surface-low);
     border-right: 0;
     padding: 32px 16px;
     gap: 6px;
+    width: var(--rail);
+    min-width: var(--rail);
+    max-width: var(--rail);
     height: var(--rail-h);
     min-height: var(--rail-h);
     flex-shrink: 0;
     box-sizing: border-box;
+    z-index: 1;
+}
+
+.main {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: calc(var(--rail-h) - 32px);
+    max-height: calc(var(--rail-h) - 32px);
+    margin: 16px;
+    padding: 40px 56px 32px;
+    background: var(--surface-container);
+    border-radius: var(--r-xl);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    box-sizing: border-box;
+    z-index: 2;
+    will-change: transform;
+    transform: translateZ(0);
+    transition: box-shadow 220ms var(--ease);
+}
+
+.app.playing {
+    background: transparent;
+}
+
+/* When previewing live video, mask the exact viewport cutout from .app
+   so its solid var(--surface-low) background stays 100% identical and seamless
+   across the rail and margins without flashing, seams, or greying out the preview. */
+body.previewing .app {
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-repeat: no-repeat, no-repeat;
+    -webkit-mask-size:
+        100% 100%,
+        var(--hole-w, 0) var(--hole-h, 0);
+    -webkit-mask-position:
+        0 0,
+        var(--hole-x, 0) var(--hole-y, 0);
+    -webkit-mask-composite: xor;
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-repeat: no-repeat, no-repeat;
+    mask-size:
+        100% 100%,
+        var(--hole-w, 0) var(--hole-h, 0);
+    mask-position:
+        0 0,
+        var(--hole-x, 0) var(--hole-y, 0);
+    mask-composite: exclude;
+}
+
+body.previewing .backdrop {
+    display: none;
+}
+
+/* When previewing live video, do NOT apply the mask directly to .main, because
+   Chromium suppresses an element's outer box-shadow when -webkit-mask-image is applied to it.
+   Instead, .main keeps its box-shadow and sets background to transparent, while .main::after
+   carries the surface background and the masked cutout hole, ensuring the outer shadow
+   remains visible and identical to Favs/Recents. */
+body.previewing .main {
+    background: transparent;
+    -webkit-mask: none;
+    mask: none;
+}
+
+body.previewing .main::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-xl);
+    background: var(--surface-container);
+    pointer-events: none;
+    z-index: -1;
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-repeat: no-repeat, no-repeat;
+    -webkit-mask-size:
+        100% 100%,
+        var(--hole-w, 0) var(--hole-h, 0);
+    -webkit-mask-position:
+        0 0,
+        var(--main-hole-x, 0) var(--main-hole-y, 0);
+    -webkit-mask-composite: xor;
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-repeat: no-repeat, no-repeat;
+    mask-size:
+        100% 100%,
+        var(--hole-w, 0) var(--hole-h, 0);
+    mask-position:
+        0 0,
+        var(--main-hole-x, 0) var(--main-hole-y, 0);
+    mask-composite: exclude;
+}
+
+.app.playing .main {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
 }
 
 .rail-top {
@@ -252,11 +371,6 @@ body::before,
     font-size: 15px;
 }
 
-/* Layout and type scale */
-.main {
-    padding: 40px 56px 32px;
-}
-
 h1 {
     font-size: 44px;
     font-weight: 500;
@@ -382,6 +496,87 @@ h1 {
     border-right: 0;
 }
 
+/* Modal side sheet for Favorites list while watching (MD3 side sheet) */
+.zap.fav-zap {
+    inset: 16px auto 16px 16px;
+    height: calc(100vh - 32px);
+    max-height: calc(100vh - 32px);
+    width: min(440px, 36%);
+    min-width: 360px;
+    background: var(--surface-container);
+    border-radius: var(--r-xl);
+    box-shadow: 0 8px 36px rgba(0, 0, 0, 0.55);
+    border: 0;
+    overflow: hidden;
+    animation: md3-side-sheet-in 320ms var(--ease-out);
+}
+
+@keyframes md3-side-sheet-in {
+    from {
+        opacity: 0;
+        transform: translateX(-40px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.zap.fav-zap .zap-list {
+    padding: 16px 12px;
+}
+
+.zap.fav-zap .zap-head {
+    padding: 12px 16px 18px;
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 8px;
+}
+
+.zap.fav-zap .zap-hint {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+    text-transform: uppercase;
+}
+
+.zap.fav-zap .row.zapch {
+    border-radius: 16px;
+    margin: 4px 0;
+    padding: 12px 16px;
+    min-height: 72px;
+    background: transparent;
+    transition:
+        background-color 200ms var(--ease),
+        box-shadow 200ms var(--ease),
+        transform 200ms var(--ease);
+}
+
+.zap.fav-zap .row.zapch.focused {
+    background: var(--surface-3);
+    color: var(--text);
+    box-shadow: inset 0 0 0 2px var(--ring);
+}
+
+.zap.fav-zap .row.zapch.playing {
+    background: var(--surface-2);
+}
+
+.zap.fav-zap .row.zapch.playing.focused {
+    background: var(--surface-3);
+    box-shadow: inset 0 0 0 2px var(--ring);
+}
+
+.zap.fav-zap .zap-now {
+    color: var(--primary);
+    font-size: 15px;
+}
+
 .zap-cats {
     border-right: 0;
 }
@@ -392,18 +587,35 @@ h1 {
 
 /* Type cards */
 .typecard {
-    border: 0;
+    border: 1px solid var(--outline-variant);
     border-radius: 28px;
     background: var(--surface-container);
     box-shadow: none;
     min-height: 150px;
+    transition:
+        border-color 150ms var(--ease),
+        background-color 150ms var(--ease),
+        box-shadow 150ms var(--ease),
+        transform 150ms var(--ease);
 }
 
-.typecard.focused {
-    border: 0;
+.typecard:hover {
+    border-color: var(--outline-variant);
+    background: var(--surface-high);
+}
+
+.typecard.focused,
+.typecard:focus-visible {
+    border-color: transparent;
     background: var(--surface-high);
     box-shadow: inset 0 0 0 2px var(--ring);
     transform: scale(1.02);
+}
+
+.typecard:active {
+    background: var(--surface-highest);
+    border-color: var(--outline-variant);
+    transform: scale(0.99);
 }
 
 .type-icon {
@@ -411,7 +623,8 @@ h1 {
     color: var(--on-primary-container);
 }
 
-.typecard.focused .type-icon {
+.typecard.focused .type-icon,
+.typecard:focus-visible .type-icon {
     background: var(--primary);
     color: var(--on-primary);
 }
@@ -421,49 +634,210 @@ h1 {
     font-weight: 500;
 }
 
-/* Search: MD3 search bar */
-.search {
+/* Search: MD3 split button search bar (Outlined Split Button specification) */
+.search-split {
+    display: flex;
+    align-items: stretch;
+    width: 540px;
+    max-width: 42vw;
+    gap: 0;
+    transition: gap 150ms var(--ease);
+}
+
+.search-split.has-clear {
+    gap: 4px;
+}
+
+.search-split .search {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+    border: 1px solid var(--outline-variant);
     border-radius: 28px;
     background: var(--surface-high);
     box-shadow: none;
     padding: 14px 22px;
+    transition:
+        border-radius 150ms var(--ease),
+        border-color 150ms var(--ease),
+        background-color 150ms var(--ease),
+        box-shadow 150ms var(--ease);
 }
 
-.search:focus-within,
-.search.focused {
+/* When split: left part has rounded left corners and flatter inner right corner */
+.search-split.has-clear .search {
+    border-radius: 28px 4px 4px 28px;
+}
+
+.search-split .search:hover {
     background: var(--surface-highest);
-    box-shadow: inset 0 0 0 2px var(--ring);
+    border-color: var(--outline);
 }
 
-/* Forms and dialogs */
+.search-split .search:focus-within,
+.search-split .search.focused {
+    background: var(--surface-highest);
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+/* Trailing split clear button: flatter inner left corner, rounded outer right */
+.search-split .search-clear {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: auto;
+    align-self: stretch;
+    padding: 0;
+    border: 1px solid var(--outline-variant);
+    border-radius: 4px 28px 28px 4px;
+    background: var(--surface-high);
+    color: var(--text-2);
+    cursor: pointer;
+    box-shadow: none;
+    transition:
+        border-color 150ms var(--ease),
+        background-color 150ms var(--ease),
+        color 150ms var(--ease),
+        box-shadow 150ms var(--ease),
+        transform 150ms var(--ease);
+}
+
+.search-split .search-clear svg {
+    width: 20px;
+    height: 20px;
+}
+
+.search-split .search-clear:hover {
+    background: var(--surface-highest);
+    border-color: var(--outline);
+    color: var(--text);
+}
+
+.search-split .search-clear:focus,
+.search-split .search-clear.focused {
+    background: var(--surface-highest);
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 1px var(--primary);
+    color: var(--text);
+}
+
+.search-split .search-clear:active {
+    background: var(--surface-container);
+    transform: scale(0.98);
+}
+
+/* Forms and dialog cards */
 .panel {
     border: 0;
     border-radius: 28px;
+    width: min(560px, 90vw);
+    min-width: 280px;
+    margin: 0 auto;
+    padding: 24px;
     background: var(--surface-high);
-    box-shadow: none;
+    box-shadow: 0 8px 36px rgba(0, 0, 0, 0.55);
+    box-sizing: border-box;
 }
 
 .panel label {
-    text-transform: none;
-    letter-spacing: 0.01em;
-    font-size: 16px;
+    display: inline-block;
+    position: relative;
+    z-index: 2;
+    margin: 16px 0 0 12px;
+    padding: 0 4px;
+    background: var(--surface-high);
+    width: fit-content;
+    font-size: 12px;
     font-weight: 500;
-    color: var(--text-2);
+    line-height: 16px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    color: var(--outline);
+    transform: translateY(8px);
+    transition: color 150ms var(--ease);
+}
+
+.panel label:first-child {
+    margin-top: 0;
 }
 
 .panel input,
 .panel textarea {
-    border: 0;
-    border-radius: 12px;
-    background: var(--surface-highest);
+    position: relative;
+    z-index: 1;
+    border: 1px solid var(--outline-variant);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text);
+    padding: 0 16px;
+    height: 56px;
+    min-height: 56px;
+    font-size: 16px;
+    box-sizing: border-box;
+    transition:
+        border-color 150ms var(--ease),
+        background-color 150ms var(--ease),
+        box-shadow 150ms var(--ease);
+}
+
+.panel textarea {
+    height: auto;
+    min-height: 112px;
+    padding: 16px;
+    line-height: 1.5;
+}
+
+.panel input::placeholder,
+.panel textarea::placeholder {
+    color: var(--text-3);
+}
+
+.panel input:hover,
+.panel textarea:hover {
+    border-color: var(--outline);
+}
+
+.panel:has(input:hover) label[for],
+.panel:has(textarea:hover) label[for] {
+    color: var(--outline);
 }
 
 .panel input.focused,
 .panel input:focus,
 .panel textarea.focused,
 .panel textarea:focus {
-    background: var(--surface-highest);
+    background: transparent;
+    border-color: var(--primary);
     box-shadow: inset 0 0 0 2px var(--ring);
+}
+
+/* Float label color highlights to primary when input is focused */
+.panel:has(#field-url.focused) label[for="field-url"],
+.panel:has(#field-url:focus) label[for="field-url"],
+.panel:has(#field-name.focused) label[for="field-name"],
+.panel:has(#field-name:focus) label[for="field-name"],
+.panel:has(#field-user.focused) label[for="field-user"],
+.panel:has(#field-user:focus) label[for="field-user"],
+.panel:has(#field-pass.focused) label[for="field-pass"],
+.panel:has(#field-pass:focus) label[for="field-pass"],
+.panel:has(#field-text.focused) label[for="field-text"],
+.panel:has(#field-text:focus) label[for="field-text"],
+.panel:has(#field-mac.focused) label[for="field-mac"],
+.panel:has(#field-mac:focus) label[for="field-mac"] {
+    color: var(--primary);
+}
+
+.panel .actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    margin-top: 24px;
+    padding: 0;
 }
 
 .toggle {
@@ -481,55 +855,142 @@ h1 {
     border-color: var(--outline);
 }
 
-/* Buttons: MD3 filled, tonal and outlined */
+/* Buttons: MD3 filled, tonal, danger and split button groups */
 .btn {
-    border: 0;
+    border: 1px solid transparent;
     border-radius: 100px;
-    padding: 14px 28px;
-    font-size: 19px;
+    padding: 12px 24px;
+    font-size: 16px;
     font-weight: 500;
     background: var(--secondary-container);
     color: var(--on-secondary-container);
     box-shadow: none;
+    cursor: pointer;
+    transition:
+        border-color 150ms var(--ease),
+        background-color 150ms var(--ease),
+        box-shadow 150ms var(--ease),
+        transform 150ms var(--ease),
+        color 150ms var(--ease);
 }
 
-.btn.primary {
-    background: var(--primary);
-    color: var(--on-primary);
+.btn:hover {
+    background: var(--surface-highest);
+    color: var(--text);
 }
 
+.btn:active {
+    transform: scale(0.98);
+}
+
+/* Default unfocused state: all buttons share the neutral tonal container style */
+.btn.primary,
 .btn.danger {
-    border: 0;
-    background: var(--error);
-    color: var(--on-error);
+    border-color: transparent;
+    background: var(--secondary-container);
+    color: var(--on-secondary-container);
+}
+
+.btn.primary:hover,
+.btn.danger:hover {
+    background: var(--surface-highest);
+    color: var(--text);
 }
 
 .btn.saved {
-    border: 0;
     background: var(--tertiary-container);
     color: var(--on-tertiary-container);
 }
 
-.btn.focused {
+.btn.focused,
+.btn:focus {
     border-color: transparent;
     box-shadow: inset 0 0 0 2px var(--ring);
-    transform: scale(1.03);
+    transform: scale(1.02);
+    background: var(--surface-highest);
+    color: var(--text);
 }
 
-.btn.primary.focused {
+/* Focus states reveal the specific action role colors */
+.btn.primary.focused,
+.btn.primary:focus {
+    background: var(--primary);
+    color: var(--on-primary);
     box-shadow: 0 0 0 3px var(--ring);
+}
+
+.btn.danger.focused,
+.btn.danger:focus {
+    background: var(--error);
+    color: var(--on-error);
+    box-shadow: inset 0 0 0 2px var(--ring);
+}
+
+/* Split Button & Connected Button Groups (MD3 Connected Button Groups Specification):
+   - 2 buttons: First has curvy left and rectangular inner right; second has rectangular inner left and curvy right.
+   - 3 buttons: Left is curvy on open end & rectangular inner; center is rectangular on both inner sides; right is rectangular inner & curvy on open end.
+   - 4px gap between connected split segments. */
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.actions > .btn {
+    border-radius: 4px;
+}
+
+.actions > .btn:first-child {
+    border-radius: 24px 4px 4px 24px;
+}
+
+.actions > .btn:last-child {
+    border-radius: 4px 24px 24px 4px;
+}
+
+.actions > .btn:only-child {
+    border-radius: 24px;
 }
 
 .modal {
     background: rgba(0, 0, 0, 0.5);
 }
 
+/* Material Design 3 Basic Dialog specification:
+   - 28dp corner radius
+   - Width: min 280dp, max 560dp (480px on 1080p TV)
+   - Padding: 24dp top, left, right, bottom
+   - Gap between body and actions: 24dp
+   - Gap between action buttons: 8dp
+   - End-aligned actions */
 .modal-card {
     border: 0;
     border-radius: 28px;
+    width: min(560px, 90vw);
+    min-width: 280px;
+    padding: 24px;
     background: var(--surface-high);
-    box-shadow: none;
+    box-shadow: 0 8px 36px rgba(0, 0, 0, 0.55);
     color: var(--text);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+#confirmText {
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--text-2);
+    margin: 0;
+}
+
+.modal-card .actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    margin-top: 24px;
+    padding: 0;
 }
 
 /* Snackbar: MD3 toast */

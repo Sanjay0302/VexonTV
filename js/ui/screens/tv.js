@@ -45,6 +45,7 @@ App.uiScreens = App.uiScreens || {}
         const box = previewBox()
         const layer = document.getElementById("backdrop")
         const stage = document.getElementById("previewStage")
+        const mainEl = document.querySelector(".main")
         if (!box || !layer) return
         const rootStyle = document.documentElement.style
         // One pixel per side: the focus edge lives on the card border, and flush to the
@@ -57,6 +58,17 @@ App.uiScreens = App.uiScreens || {}
         if (stage && stage.offsetParent) {
             rootStyle.setProperty("--stage-x", `${Math.round(stage.offsetLeft + inset)}px`)
             rootStyle.setProperty("--stage-y", `${Math.round(stage.offsetTop + inset)}px`)
+        }
+        if (mainEl) {
+            const mainRect = mainEl.getBoundingClientRect()
+            rootStyle.setProperty(
+                "--main-hole-x",
+                `${Math.round(box.left - mainRect.left + inset)}px`,
+            )
+            rootStyle.setProperty(
+                "--main-hole-y",
+                `${Math.round(box.top - mainRect.top + inset)}px`,
+            )
         }
     }
 
@@ -150,16 +162,22 @@ App.uiScreens = App.uiScreens || {}
             setHole()
             if (supportsHole() && player.hardware()) document.body.classList.add("previewing")
             player.play(state.preview.url, videoRect())
-            function onResize() {
+            function onResize(e) {
+                // If this is a bubbling transition/animation event from child rows/buttons, ignore it
+                if (e && e.target && e.currentTarget && e.target !== e.currentTarget) return
                 setHole()
-                player.play(state.preview.url, videoRect())
+                const rect = videoRect()
+                if (player.resize) player.resize(rect)
             }
             const screenEl = document.getElementById("screen-tv")
+            const mainEl = document.querySelector(".main")
             window.addEventListener("resize", onResize)
             if (screenEl) screenEl.addEventListener("animationend", onResize)
+            if (mainEl) mainEl.addEventListener("transitionend", onResize)
             return function () {
                 window.removeEventListener("resize", onResize)
                 if (screenEl) screenEl.removeEventListener("animationend", onResize)
+                if (mainEl) mainEl.removeEventListener("transitionend", onResize)
                 document.body.classList.remove("previewing")
                 player.stop()
             }
