@@ -48,7 +48,7 @@ body::before,
     min-width: 0;
     height: calc(var(--rail-h) - 32px);
     max-height: calc(var(--rail-h) - 32px);
-    margin: 16px;
+    margin: 16px 16px 16px calc(-1 * var(--rail) + 16px);
     padding: 40px 56px 32px;
     background: var(--surface-container);
     border-radius: var(--r-xl);
@@ -56,9 +56,15 @@ body::before,
     overflow: hidden;
     box-sizing: border-box;
     z-index: 2;
-    will-change: transform;
-    transform: translateZ(0);
-    transition: box-shadow 220ms var(--ease);
+    transition:
+        margin-left var(--dur) var(--ease),
+        box-shadow 220ms var(--ease);
+}
+
+.app.rail-open .main,
+.app:has(.rail .focused) .main,
+.app:has(.rail:focus-within) .main {
+    margin-left: 16px;
 }
 
 .app.playing {
