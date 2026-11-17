@@ -20,6 +20,9 @@ App.uiScreens = App.uiScreens || {}
         const overlay = overlayState[0]
         const setOverlay = overlayState[1]
         const timer = useRef(null)
+        const timeState = useState({ current: 0, duration: 0, paused: false })
+        const mediaTime = timeState[0]
+        const setMediaTime = timeState[1]
 
         useEffect(() => {
             player.init(videoRef.current, {
@@ -28,6 +31,16 @@ App.uiScreens = App.uiScreens || {}
                 },
                 onError: function (message) {
                     store.playFailed(message)
+                },
+                onDuration: function (dur) {
+                    setMediaTime((prev) => {
+                        return { ...prev, duration: dur }
+                    })
+                },
+                onTimeUpdate: function (time) {
+                    setMediaTime((prev) => {
+                        return { ...prev, current: time }
+                    })
                 },
             })
             return function () {
@@ -80,6 +93,27 @@ App.uiScreens = App.uiScreens || {}
         const next = state.nextProgram
         const progress = store.programProgress(program)
 
+        const isVod =
+            channel.url &&
+            (channel.size !== undefined ||
+                /\.(mp4|mkv|avi|mov|webm|m4v|flv|3gp|wmv|mpg|mpeg)/i.test(channel.url))
+        const formatTime = (ms) => {
+            if (!ms || isNaN(ms)) return "00:00"
+            const totalSec = Math.floor(ms / 1000)
+            const mins = Math.floor(totalSec / 60)
+            const secs = totalSec % 60
+            const hrs = Math.floor(mins / 60)
+            if (hrs > 0) {
+                const remMins = mins % 60
+                return `${hrs}:${remMins < 10 ? "0" : ""}${remMins}:${secs < 10 ? "0" : ""}${secs}`
+            }
+            return `${mins < 10 ? "0" : ""}${mins}:${secs < 10 ? "0" : ""}${secs}`
+        }
+        const vodProgress =
+            mediaTime.duration > 0
+                ? Math.min(100, Math.max(0, (mediaTime.current / mediaTime.duration) * 100))
+                : 0
+
         return html`<section
             class=${`screen player${player.hardware() ? " hw" : ""}`}
             id="screen-player"
@@ -98,6 +132,9 @@ App.uiScreens = App.uiScreens || {}
             ${
                 state.playStatus === "opening"
                     ? html`<div class="player-status" id="playerStatus">
+                          <div class="scallop-loading">
+                              <span class="scallop-shape"></span>
+                          </div>
                           <div class="spinner"></div>
                           <p class="player-status-text">Opening “${channel.name}”…</p>
                       </div>`
@@ -151,12 +188,36 @@ App.uiScreens = App.uiScreens || {}
             >
                 <div class="ov-info">
                     <p class="ov-live" id="ovLive">
-                        <span class="dot"></span>Live<span class="ov-engine" id="ovEngine"
+                        <span class=${isVod ? "dot vod" : "dot"}></span
+                        >${isVod ? "Media" : "Live"}<span class="ov-engine" id="ovEngine"
                             >${player.hardware() ? "AVPlay" : "HTML5"}</span
                         >
                     </p>
                     <h1 id="ovName">${channel.name}</h1>
                     <p class="ov-group" id="ovGroup">${channel.group || ""}</p>
+                    ${
+                        isVod
+                            ? html`<div class="md3-player-transport">
+                                  <div class="md3-slider-row">
+                                      <span class="md3-time md3-time-current" id="vodCurrentTime"
+                                          >${formatTime(mediaTime.current)}</span
+                                      >
+                                      <div class="md3-slider-track">
+                                          <div
+                                              class="md3-slider-fill"
+                                              id="vodProgressFill"
+                                              style=${`width:${vodProgress}%`}
+                                          >
+                                              <span class="md3-slider-handle"></span>
+                                          </div>
+                                      </div>
+                                      <span class="md3-time md3-time-duration" id="vodDuration"
+                                          >${formatTime(mediaTime.duration)}</span
+                                      >
+                                  </div>
+                              </div>`
+                            : null
+                    }
                     ${
                         program
                             ? html`<div class="ov-guide" id="ovProgram">
@@ -200,8 +261,7 @@ App.uiScreens = App.uiScreens || {}
                     <!-- The legend goes last: the name, the guide and what comes next
                          are one thing and do not split down the middle. -->
                     <p class="ov-keys" id="ovKeys">
-                        <span class="ov-key">CH UP/DOWN</span><span>channel</span>
-                        <span class="ov-key">LEFT</span><span>favorites</span>
+                        ${isVod ? html`<span class="ov-key">LEFT/RIGHT</span><span>seek 10s</span><span class="ov-key">OK</span><span>play/pause</span>` : html`<span class="ov-key">CH UP/DOWN</span><span>channel</span><span class="ov-key">LEFT</span><span>favorites</span>`}
                         <span class="ov-key">DOWN</span><span>menu</span>
                         <span class="ov-key">BACK</span><span>exit</span>
                         <span class="ov-key">RED</span><span>favorite</span>
@@ -224,6 +284,21 @@ App.uiScreens = App.uiScreens || {}
                     >
                         ${saved ? "Remove from favorites" : "Add to favorites"}
                     </button>
+                    ${
+                        isVod
+                            ? html`<button
+                                  class="btn"
+                                  id="ovPlayToggle"
+                                  tabindex="-1"
+                                  onClick=${function () {
+                                      player.toggle()
+                                      show()
+                                  }}
+                              >
+                                  Play / Pause
+                              </button>`
+                            : null
+                    }
                 </div>
             </div>
         </section>`

@@ -163,6 +163,17 @@ App.player = (function () {
             },
             { once: true },
         )
+        video.addEventListener("loadedmetadata", () => {
+            started()
+            if (handlers.onDuration && video.duration) {
+                handlers.onDuration(video.duration * 1000)
+            }
+        })
+        video.addEventListener("timeupdate", () => {
+            if (handlers.onTimeUpdate && !isNaN(video.currentTime)) {
+                handlers.onTimeUpdate(video.currentTime * 1000)
+            }
+        })
         waitForStart()
         video.play().then(started).catch(fail)
     }
@@ -188,9 +199,14 @@ App.player = (function () {
                     },
                     onbufferingcomplete: function () {
                         started()
+                        try {
+                            const dur = AV.getDuration()
+                            if (dur > 0 && handlers.onDuration) handlers.onDuration(dur)
+                        } catch {}
                     },
-                    oncurrentplaytime: function () {
+                    oncurrentplaytime: function (time) {
                         started()
+                        if (handlers.onTimeUpdate) handlers.onTimeUpdate(time)
                     },
                     onstreamcompleted: function () {
                         if (handlers.onEnd) handlers.onEnd()
@@ -201,6 +217,10 @@ App.player = (function () {
                     () => {
                         AV.play()
                         started()
+                        try {
+                            const dur = AV.getDuration()
+                            if (dur > 0 && handlers.onDuration) handlers.onDuration(dur)
+                        } catch {}
                     },
                     (error) => {
                         fail(error)
@@ -213,6 +233,47 @@ App.player = (function () {
         }
 
         playWithVideo(url)
+    }
+
+    function seekTo(timeMs) {
+        const AV = avplay()
+        if (AV) {
+            try {
+                AV.seekTo(Math.max(0, timeMs))
+                return
+            } catch {}
+        }
+        if (video) {
+            try {
+                video.currentTime = Math.max(0, timeMs / 1000)
+            } catch {}
+        }
+    }
+
+    function getDuration() {
+        const AV = avplay()
+        if (AV) {
+            try {
+                return AV.getDuration() || 0
+            } catch {}
+        }
+        if (video && !isNaN(video.duration)) {
+            return video.duration * 1000
+        }
+        return 0
+    }
+
+    function getCurrentTime() {
+        const AV = avplay()
+        if (AV) {
+            try {
+                return AV.getCurrentTime() || 0
+            } catch {}
+        }
+        if (video && !isNaN(video.currentTime)) {
+            return video.currentTime * 1000
+        }
+        return 0
     }
 
     function toggle() {
@@ -248,5 +309,8 @@ App.player = (function () {
         resize,
         describe,
         hardware,
+        seekTo,
+        getDuration,
+        getCurrentTime,
     }
 })()

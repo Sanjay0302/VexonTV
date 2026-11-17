@@ -255,7 +255,7 @@ async function run() {
     check("OK opens the type selector", !!document.getElementById("addTypes"))
     check(
         "it offers the formats",
-        document.querySelectorAll("#addTypes .typecard").length === 7,
+        document.querySelectorAll("#addTypes .typecard").length === 8,
         `${document.querySelectorAll("#addTypes .typecard").length} tarjetas`,
     )
     check("the focus enters the selector", !!focused() && focused().classList.contains("typecard"))

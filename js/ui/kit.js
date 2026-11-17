@@ -24,6 +24,12 @@ App.uiKit = (function () {
             icon: "chat",
         },
         {
+            id: "webdav",
+            title: "WebDAV / Local Media",
+            hint: "Browse phone or media server",
+            icon: "folder",
+        },
+        {
             id: "auto",
             title: "Detect",
             hint: "Paste whatever your provider gave you",
@@ -34,6 +40,15 @@ App.uiKit = (function () {
     const FIELD_SETS = {
         url: [{ id: "url", label: "Playlist address", placeholder: "http://host:8080/list.m3u" }],
         file: [],
+        webdav: [
+            {
+                id: "origin",
+                label: "Server Address (HTTP / HTTPS)",
+                placeholder: "http://192.168.1.50:8181",
+            },
+            { id: "user", label: "Username (optional)" },
+            { id: "pass", label: "Password (optional)" },
+        ],
         xtream: [
             { id: "origin", label: "Server", placeholder: "http://host:8080" },
             { id: "user", label: "Username" },
@@ -236,6 +251,15 @@ App.uiKit = (function () {
             stroke-linejoin="round"
         />`,
     )
+    const iconFolder = svg(
+        html`<path
+            d="M3 7v13h18V9h-9l-2-2H3z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linejoin="round"
+        />`,
+    )
     const iconPencil = svg(
         html`<path
                 d="M5 19h3L19 8l-3-3L5 16z"
@@ -264,6 +288,7 @@ App.uiKit = (function () {
         box: iconBox,
         text: iconText,
         chat: iconChat,
+        folder: iconFolder,
         wand: iconWand,
     }
 

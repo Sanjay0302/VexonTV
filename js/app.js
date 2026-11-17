@@ -412,6 +412,35 @@ var App = App || {} // eslint-disable-line no-var -- shared namespace, no module
             return true
         }
 
+        const isVodPlaying =
+            store.state.playing &&
+            store.state.playing.channel &&
+            store.state.playing.channel.url &&
+            (store.state.playing.channel.size !== undefined ||
+                /\.(mp4|mkv|avi|mov|webm|m4v|flv|3gp|wmv|mpg|mpeg)/i.test(
+                    store.state.playing.channel.url,
+                ))
+
+        if (isVodPlaying && !store.state.menuFocus) {
+            if (code === tv.KEY.LEFT) {
+                // Seek back 10s
+                const cur = player.getCurrentTime()
+                player.seekTo(Math.max(0, cur - 10000))
+                return true
+            }
+            if (code === tv.KEY.RIGHT) {
+                // Seek forward 10s
+                const cur = player.getCurrentTime()
+                const dur = player.getDuration()
+                player.seekTo(Math.min(dur || cur + 10000, cur + 10000))
+                return true
+            }
+            if (code === tv.KEY.ENTER) {
+                player.toggle()
+                return true
+            }
+        }
+
         if (store.state.favZapOpen && code === tv.KEY.RIGHT) {
             store.closeFavZap()
             return true

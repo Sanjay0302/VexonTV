@@ -183,6 +183,7 @@ App.store = (function () {
         if (listKind(list) === "xtream") return "Xtream"
         if (listKind(list) === "stalker") return "Stalker"
         if (listKind(list) === "telegram") return "Telegram"
+        if (listKind(list) === "webdav") return "WebDAV"
         return list.source === "text" ? "Text" : "M3U"
     }
 
@@ -485,6 +486,25 @@ App.store = (function () {
                     token,
                     chatId: cleanChatId,
                     name: name || "Telegram Bot",
+                }),
+            }
+        }
+
+        if (type === "webdav") {
+            const serverUrl = (fields.origin || fields.url || "").trim()
+            if (!/^https?:\/\//i.test(serverUrl)) {
+                return { error: "The server address must start with http:// or https://" }
+            }
+            const cleanOrigin = serverUrl.replace(/\/+$/, "")
+            return {
+                list: decorate({
+                    kind: "webdav",
+                    source: "webdav",
+                    origin: cleanOrigin,
+                    url: cleanOrigin,
+                    user: (fields.user || "").trim(),
+                    pass: (fields.pass || "").trim(),
+                    name: name || App.api.hostOf(cleanOrigin) || "WebDAV Server",
                 }),
             }
         }

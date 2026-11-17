@@ -416,6 +416,270 @@ App.api = (function () {
         return { error: "No playlist, portal or MAC found in that text" }
     }
 
+    const VIDEO_EXTS =
+        /\.(mp4|mkv|avi|mov|ts|webm|m4v|flv|3gp|wmv|mpg|mpeg|m4p|vob|ogv|divx|m2ts)$/i
+
+    function isVideoFile(name) {
+        return VIDEO_EXTS.test(name || "")
+    }
+
+    function buildAuthHeaders(user, pass) {
+        const headers = { Depth: "1" }
+        if (user || pass) {
+            headers["Authorization"] = `Basic ${btoa(`${user || ""}:${pass || ""}`)}`
+        }
+        return headers
+    }
+
+    function cleanBaseUrl(url) {
+        return (url || "").trim().replace(/\/+$/, "")
+    }
+
+    function buildMediaUrl(base, href, user, pass) {
+        let full = href
+        if (!full.startsWith("http://") && !full.startsWith("https://")) {
+            full = base + (full.startsWith("/") ? "" : "/") + full
+        }
+        if (user || pass) {
+            try {
+                const u = new URL(full)
+                u.username = user || ""
+                u.password = pass || ""
+                return u.toString()
+            } catch {}
+        }
+        return full
+    }
+
+    function parseMixplorerHtml(htmlString, folderPath, base, user, pass) {
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(htmlString, "text/html")
+        const dirs = []
+        const videos = []
+        const currentGroup =
+            folderPath === "/" || !folderPath
+                ? "Root"
+                : folderPath
+                      .replace(/^\/+|\/+$/g, "")
+                      .split("/")
+                      .pop() || "Root"
+
+        // Directories
+        const dirLinks = doc.querySelectorAll(".directories a, ul section.directories li a")
+        dirLinks.forEach((a) => {
+            const href = a.getAttribute("href") || ""
+            if (!href || href === "#" || href === "." || href === "../") return
+            const nameEl = a.querySelector(".dirname, .name, span") || a
+            const name = (nameEl.textContent || href).trim()
+            if (name && !name.startsWith(".")) {
+                dirs.push({ name, path: href })
+            }
+        })
+
+        // Files
+        const fileLinks = doc.querySelectorAll(".files a, ul section.files li a")
+        fileLinks.forEach((a) => {
+            const href = a.getAttribute("href") || ""
+            if (!href || href === "#") return
+            const nameEl = a.querySelector(".filename, .name, span") || a
+            const name = (nameEl.textContent || href).trim()
+            if (isVideoFile(name)) {
+                const li = a.closest("li")
+                const sizeEl = li ? li.querySelector(".filesize") : null
+                const size = sizeEl ? sizeEl.textContent.replace(/[()]/g, "").trim() : ""
+                videos.push({
+                    name,
+                    group: currentGroup,
+                    url: buildMediaUrl(base, href, user, pass),
+                    logo: "",
+                    size,
+                    folder: folderPath,
+                })
+            }
+        })
+
+        // Fallback for generic server directory indexes (Apache, Nginx, Python)
+        if (dirs.length === 0 && videos.length === 0) {
+            const allLinks = doc.querySelectorAll("a")
+            allLinks.forEach((a) => {
+                const href = a.getAttribute("href") || ""
+                if (
+                    !href ||
+                    href.startsWith("?") ||
+                    href.startsWith("#") ||
+                    href === "/" ||
+                    href === "../" ||
+                    href === "./"
+                )
+                    return
+                const name = a.textContent.trim() || href
+                if (href.endsWith("/")) {
+                    dirs.push({ name: name.replace(/\/$/, ""), path: href })
+                } else if (isVideoFile(name) || isVideoFile(href)) {
+                    videos.push({
+                        name,
+                        group: currentGroup,
+                        url: buildMediaUrl(base, href, user, pass),
+                        logo: "",
+                        size: "",
+                        folder: folderPath,
+                    })
+                }
+            })
+        }
+
+        return { dirs, videos }
+    }
+
+    function parseWebDavXml(xmlString, folderPath, base, user, pass) {
+        const parser = new DOMParser()
+        const xml = parser.parseFromString(xmlString, "application/xml")
+        const responses = xml.querySelectorAll("response, D\\:response, d\\:response")
+        const dirs = []
+        const videos = []
+        const currentGroup =
+            folderPath === "/" || !folderPath
+                ? "Root"
+                : folderPath
+                      .replace(/^\/+|\/+$/g, "")
+                      .split("/")
+                      .pop() || "Root"
+
+        responses.forEach((resp) => {
+            const hrefEl = resp.querySelector("href, D\\:href, d\\:href")
+            if (!hrefEl) return
+            const rawHref = hrefEl.textContent.trim()
+            let decodedHref = decodeURIComponent(rawHref)
+            if (decodedHref.startsWith("http://") || decodedHref.startsWith("https://")) {
+                try {
+                    decodedHref = new URL(decodedHref).pathname
+                } catch {}
+            }
+
+            const reqNorm = folderPath.endsWith("/") ? folderPath : `${folderPath}/`
+            const itemNorm = decodedHref.endsWith("/") ? decodedHref : `${decodedHref}/`
+            if (
+                itemNorm === reqNorm ||
+                decodedHref === folderPath ||
+                decodedHref === folderPath.replace(/\/$/, "")
+            ) {
+                return
+            }
+
+            const isDir = !!resp.querySelector("collection, D\\:collection, d\\:collection")
+            const lengthEl = resp.querySelector(
+                "getcontentlength, D\\:getcontentlength, d\\:getcontentlength",
+            )
+            const size = lengthEl ? lengthEl.textContent.trim() : ""
+            const parts = decodedHref.replace(/\/$/, "").split("/")
+            const name = parts[parts.length - 1] || decodedHref
+
+            if (isDir) {
+                dirs.push({ name, path: decodedHref })
+            } else if (isVideoFile(name)) {
+                videos.push({
+                    name,
+                    group: currentGroup,
+                    url: buildMediaUrl(base, rawHref, user, pass),
+                    logo: "",
+                    size,
+                    folder: folderPath,
+                })
+            }
+        })
+
+        return { dirs, videos }
+    }
+
+    function fetchWebDavFolder(base, folderPath, user, pass) {
+        const cleanPath = folderPath.startsWith("/") ? folderPath : `/${folderPath}`
+        const fullUrl = base + cleanPath
+        const headers = buildAuthHeaders(user, pass)
+
+        return fetch(fullUrl, { method: "GET", headers })
+            .then((res) => {
+                if (res.status === 401)
+                    throw new Error("401 Unauthorized: Incorrect username or password")
+                if (res.ok) return res.text()
+                // Fallback to PROPFIND if GET is rejected by WebDAV daemon
+                return fetch(fullUrl, { method: "PROPFIND", headers }).then((res2) => {
+                    if (res2.status === 401)
+                        throw new Error("401 Unauthorized: Incorrect username or password")
+                    if (!res2.ok && res2.status !== 207) {
+                        throw new Error(`Server returned HTTP ${res2.status}`)
+                    }
+                    return res2.text()
+                })
+            })
+            .then((text) => {
+                if (
+                    text.includes("directories") ||
+                    text.includes("files") ||
+                    text.includes("MiXplorer") ||
+                    /<html/i.test(text)
+                ) {
+                    return parseMixplorerHtml(text, cleanPath, base, user, pass)
+                }
+                return parseWebDavXml(text, cleanPath, base, user, pass)
+            })
+    }
+
+    function loadWebDAV(list, onProgress) {
+        const base = cleanBaseUrl(list.origin || list.url)
+        if (!base) return Promise.reject(new Error("WebDAV server address required"))
+        const user = list.user || ""
+        const pass = list.pass || ""
+
+        if (onProgress) onProgress({ phase: "connecting", received: 0 })
+
+        const allVideos = []
+        const queue = ["/"]
+        const visited = new Set()
+        const MAX_DEPTH = 50
+
+        function crawl() {
+            if (queue.length === 0 || visited.size >= MAX_DEPTH) {
+                if (onProgress) onProgress({ phase: "ready", channels: allVideos.length })
+                return Promise.resolve(allVideos)
+            }
+
+            const current = queue.shift()
+            if (visited.has(current)) return crawl()
+            visited.add(current)
+
+            return fetchWebDavFolder(base, current, user, pass)
+                .then((result) => {
+                    if (result.videos && result.videos.length) {
+                        for (let i = 0; i < result.videos.length; i++) {
+                            allVideos.push(result.videos[i])
+                        }
+                    }
+                    if (result.dirs && result.dirs.length) {
+                        result.dirs.forEach((d) => {
+                            let nextPath = d.path
+                            if (nextPath.startsWith("http://") || nextPath.startsWith("https://")) {
+                                try {
+                                    nextPath = new URL(nextPath).pathname
+                                } catch {}
+                            }
+                            if (!nextPath.startsWith("/"))
+                                nextPath = `${current.replace(/\/+$/, "")}/${nextPath}`
+                            if (!visited.has(nextPath)) queue.push(nextPath)
+                        })
+                    }
+                    if (onProgress) onProgress({ phase: "scanning", channels: allVideos.length })
+                    return crawl()
+                })
+                .catch((err) => {
+                    if (current === "/") throw err
+                    console.warn(`WebDAV failed crawling ${current}:`, err.message)
+                    return crawl()
+                })
+        }
+
+        return crawl()
+    }
+
     function load(list, onProgress) {
         if (!list) return Promise.reject(new Error("Unknown source"))
 
@@ -425,16 +689,16 @@ App.api = (function () {
             })
         }
 
-        if (list.kind === "xtream" || list.user) {
+        if (list.kind === "webdav") {
+            return loadWebDAV(list, onProgress)
+        }
+
+        if (list.kind === "xtream" || (list.user && list.kind !== "webdav")) {
             const portal = list.origin
                 ? { origin: list.origin, user: list.user, pass: list.pass }
                 : parsePortal(list.url, list.user, list.pass)
             if (!portal) return Promise.reject(new Error("Server, username or password missing"))
             return loadXtream(portal, onProgress)
-        }
-
-        if (list.kind === "telegram") {
-            return Promise.resolve([])
         }
 
         if (list.source === "text") return loadM3uText(list.text, onProgress)
@@ -464,6 +728,9 @@ App.api = (function () {
         parseAuto,
         loadNowPlaying,
         resolveStalkerUrl,
+        loadWebDAV,
+        parseMixplorerHtml,
+        parseWebDavXml,
         hostOf,
         originOf,
     }
